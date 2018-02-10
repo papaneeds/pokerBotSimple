@@ -1,0 +1,20 @@
+Git cheat sheet:
+git init
+git status
+git add <filename>
+git commit -m "commit comment"
+git log
+git remote add origin https://github.com/papaneeds/pokerBotSimple.git
+git push -u origin master
+git pull origin master
+git diff HEAD
+git reset <filename>
+git checkout --<filename> (resets stuff to how it was before the changes)
+git branch <branch_name>
+git checkout <branch_name>
+git merge <branch_name>
+git branch -d <branch_name>
+git push 
+
+
+
