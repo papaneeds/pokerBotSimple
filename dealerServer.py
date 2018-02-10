@@ -97,22 +97,30 @@ while True:
     # Wait for a connection
     print ('waiting for a connection')
     connection, client_address = sock.accept()
-try:
+    print('connection=', connection, ' client_address=', client_address)
+
+    try:
         print('connection from', client_address)
+        gameRound = 0
 
         # Receive the data in small chunks and retransmit it
         while True:
             data = connection.recv(1024)
             print ('received "%s"' % data)
             if data:
-                print ('sending data back to the client')
+                data=gameHistory[gameRound].encode('utf-8')
+                print ('sending gameRound=', gameRound, ' data=', data)
                 connection.sendall(data)
+                gameRound=gameRound+1
+                if (gameRound >= len(gameHistory)):
+                    print('Finished all stuff. gameRound=', gameRound)
+                    break
             else:
                 print ('no more data from', client_address)
                 break
             
-finally:
-    # Clean up the connection
-    connection.close()
+    finally:
+        # Clean up the connection
+        connection.close()
 
 # Read in the previous game
