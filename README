@@ -1,0 +1,5 @@
+# To run the code:
+
+cd /home/tompokerlinux/Documents/project_acpc_server
+./play_match.pl simpleMatch holdem.nolimit.2p.reverse_blinds.game 1000 0 Alice ./example_player.nolimit.2p.sh Tom ../pokerBot/example_player.nolimit.2p.sh
+
