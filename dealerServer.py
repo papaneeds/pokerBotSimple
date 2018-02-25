@@ -24,13 +24,13 @@ def readGameHistory(gameHistoryFile, numPlayers, myPlayerNumber):
     # precedes myPlayerNumber (modulo numPlayers)
     previousPlayer = (myPlayerNumber - 1) % 3
     print ('previousPlayer=', previousPlayer)
-    print('Inside readGameHistory. Game History =', content)
+    # print('Inside readGameHistory. Game History =', content)
     tempString = ''
     for x in content[:]:
         # First, split the action along ' '
         splitStuff = x.split(' ')           
-        print(x)
-        print('len(splitStuff), splitStuff=', len(splitStuff), splitStuff)
+        # print(x)
+        # print('len(splitStuff), splitStuff=', len(splitStuff), splitStuff)
         if ( splitStuff[0] == 'FROM'):
             playerNumber = int(splitStuff[1]) - 1 
             if (playerNumber == myPlayerNumber):
