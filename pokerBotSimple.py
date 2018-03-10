@@ -32,8 +32,10 @@ class Player(object):
         self.historicalBet       = []               
         # These are the values during the current hand that the player
         # is participating in
-        self.cards = ""
-        self.bet = []        
+        self.holeCards = ""
+        self.bet = []  # The bets made during the hand, indexed by handRound
+        self.folded = False # Whether the player has folded
+        self.foldedHandRound = -1 # The handRound that they folded in.
         
         
 
@@ -69,6 +71,18 @@ class GameDefinition(object):
         self.blinds = blinds   
         self.firstToAct = firstToAct
     
+
+# This function converts between position and seatNumber
+def getSeatNumber(position, handNumber, numPlayers):
+    seatNumber = (position + handNumber) % numPlayers
+    return seatNumber
+
+# This function converts between seatNumber and position
+def getPosition(seatNumber, handNumber, numPlayers):
+    position = (seatNumber - handNumber) % numPlayers
+    return position
+
+
 def readGameDefinition(gameDefinitionFile):
     with open(gameDefinitionFile) as f:
         content = f.readlines()
@@ -120,8 +134,8 @@ def readGameDefinition(gameDefinitionFile):
         
         return GameDefinition(gameType, numPlayers, numRounds, startingStack, blinds, firstToAct)
         
-def decode(handState, handRound, gameDefinition, players):
-    print('Inside decode. handState=', handState, ' handRound=', handRound)
+def decode(handState, foldedSeat, gameDefinition, players):
+    print('Inside decode. handState=', handState)
     
     # The handstate that is received has the format like:
     # MATCHSTATE:1:0:c:|9hQd\r\n
@@ -143,8 +157,12 @@ def decode(handState, handRound, gameDefinition, players):
     betting      = splitState[3].split('/')
     handRound    = len(betting)-1
     cards    = splitState[4].split('|') 
+
+    # A variable to hold the board cards
+    # This is indexed by handRound
+    boardCards = list()
                                             
-    mySeatNumber = (myPosition + handNumber) % gameDefinition.numPlayers
+    mySeatNumber = getSeatNumber(myPosition, handNumber, gameDefinition.numPlayers)
                                                
     # Move the first to act clockwise to the right each hand.
     # The firstToActThisRoundSeat is the seatNumber that the player who is
@@ -157,8 +175,9 @@ def decode(handState, handRound, gameDefinition, players):
     firstToActThisRoundSeat = ((gameDefinition.firstToAct[handRound]) + handNumber) % gameDefinition.numPlayers
        
     print('myPosition=', myPosition,' handNumber=', handNumber,
-          ' betting=',betting,' cards=', cards, 'handRound=', handRound, 
-          'firstToActThisRoundSeat=', firstToActThisRoundSeat)
+          ' betting=',betting,' handRound=', handRound, ' cards=', cards, 
+          ' firstToActThisRoundSeat=', firstToActThisRoundSeat,
+          ' mySeatNumber=', mySeatNumber)
     
     # The hole cards are everything that appears before the first /
     # the flop, turn and river are everything that appears after the first /
@@ -174,6 +193,14 @@ def decode(handState, handRound, gameDefinition, players):
     #
     numPlayers=len(cards)
     print('numPlayers=', numPlayers, 'gameDefinition.numPlayers=', gameDefinition.numPlayers)
+    if ( numPlayers != gameDefinition.numPlayers):
+        print('ERROR!. numPlayers should be the same as gameDefinition.numPlayers!')
+    
+    # The hole cards of numPlayers-1 are in the first numPlayers-1 elements
+    # of the cards array
+    holeCards = []
+    for position in range (0, numPlayers-1):
+        holeCards.append(cards[position])
     
     # The last element of the cards array contains not only the last player's
     # hole cards, but also the betting cards. The last player's hole cards and the betting
@@ -185,26 +212,35 @@ def decode(handState, handRound, gameDefinition, players):
     #  and the betting cards are 8s4h6d/5s
     temp = cards[numPlayers-1].split('/')
     print('temp=', temp)
-    holeCards[numPlayers-1] = temp[0]
+    holeCards.append(temp[0])
     
     # The hand round is the number of betting rounds that there are.
     # handRound is indexed starting at 0 for pre-flop.
     handRound = len(temp)-1
     print('handRound=', handRound)
-
-    # if this is pre-flop then assign each player their 
-    # cards
-    if (handRound == 0):   
-        for position in range (0, numPlayers):
-            # Assign each player their cards
-            print("Inside decode. Pre-flop play. position=", position)
-            # The hole cards array is indexed by position, whereas the 
-            # players are indexed by seatNumber. So, convert position 
-            # into seatNumber
-            seatNumber = (position + handNumber) % numPlayers
-            players[seatNumber].holeCards = holeCards[position]
-            print("Inside decode. players[", seatNumber, "].cards=", players[seatNumber].cards,
-                  " stackSize=", players[seatNumber].stackSize)
+    
+    # Assign the board cards
+    # Board cards are indexed by hand round.
+    # Since there are no board cards on handRound=0 (pre-flop) simply
+    # always assign the pre-flop board cards to be ''
+    boardCards.insert(0, '')
+    if (handRound > 0):
+        for handRoundCounter in range (1, handRound+1):
+            boardCards.insert(handRoundCounter, temp[handRoundCounter])
+            
+    # assign each player their hole cards 
+    for position in range (0, numPlayers):
+        # Assign each player their cards
+        print("Inside decode. position=", position)
+        # The hole cards array is indexed by position, whereas the 
+        # players are indexed by seatNumber. So, convert position 
+        # into seatNumber
+        seatNumber = getSeatNumber(position, handNumber, numPlayers)
+        players[seatNumber].holeCards = holeCards[position]
+        print('Inside decode. position=', position, 
+              ' seatNumber=', seatNumber, 
+              ' players[', seatNumber, '].holeCards=', players[seatNumber].holeCards,
+              ' stackSize=', players[seatNumber].stackSize)
                    
     # Parse out any betting that has happened.
     # The betting strings that are expected by this regular
@@ -220,83 +256,95 @@ def decode(handState, handRound, gameDefinition, players):
     for seatNumber in range(0, gameDefinition.numPlayers):
         players[seatNumber].bet = []
         
+
+    # Cycle through all the bets for the various hand rounds
     for handRoundCounter in range(0, handRound+1):   
         
         # a temporary variable to hold the bets 
         # for this round for a particular acting player
-        betsForThisRound = []
+        betsForThisHandRound = []
         
         print('betting[', handRoundCounter, ']=', betting[handRoundCounter])
         matchObj = re.findall(r'((\S)(\d+)?)', betting[handRoundCounter])
         print('numberOfMatches=', len(matchObj))
-#        xxx this is where things are messing up.
-#        In your data file you have taken the second hand, which means that
-#        the first to act has moved around one position. However, you are still
-#        setting the active player based on the firstToAct of the original hand.
-#        This means that you are putting the bet in the wrong spot.
-#        Anyhow, find a way to fix this.
-#        Okay, so you have found a way to fix this and it involves having
-#        a handNumber and a firstToActThisRoundSeat. 
+        for i in range (0, len(matchObj)):
+            print ('i=', i, ' matchObj[', i, ']=', matchObj[i])
         
-        # Original Code: actingPlayer = gameDefinition.firstToAct[handRoundCounter]
-        actingPlayer = firstToActThisRoundSeat
+        # Find out which position acts first on this hand round
+        actingPlayerPosition = gameDefinition.firstToAct[handRoundCounter]
+        
+        # Find out which seat this corresponds to
+        actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
+                                         gameDefinition.numPlayers)
+        
+        print('The player acting first in this hand round is actingPlayerPosition=', actingPlayerPosition, 
+              ' actingPlayerSeat=', actingPlayerSeat)
+        
         if (len(matchObj) > 0) :
-            print('matchObj=', matchObj)
-            # initialize a temporary list that will hold the bets
+            # You are not first to act on this hand round
+            # Someone has bet before you.
+            print('Someone has bet before me. matchObj=', matchObj)
+            
+            # Initialize a temporary list that will hold the bets
             # for each player
-            for i in range (0, gameDefinition.numPlayers):
-                betsForThisRound.append([])
+            for seatNumberCounter in range (0, gameDefinition.numPlayers):
+                betsForThisHandRound.append([])
                 
-            print('betsForThisRound=', betsForThisRound)
-            for i in range (0, len(matchObj)): 
-                betsForThisRound[actingPlayer].append(matchObj[i])
-                print('betsForThisRound=', betsForThisRound)
+            print('betsForThisHandRound=', betsForThisHandRound)
+            
+            # A variable to index the bets
+            betCounter = 0;
+
+            while (betCounter < len(matchObj)) :
                 
-                # if the acting player folded and the acting player
-                # is the firstToAct in the next round of betting
-                # then move the firstToAct over by one player
-                # for all subsequent betting rounds
-                print('matchObj[', i, '][0]=', matchObj[i][0])
+                actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
+                                                 gameDefinition.numPlayers)
+ 
+                # Cycle through all the positions, starting at the actingPlayerPosition
+                # and assign their bets
                 
-                This is suspect and very likely not necessary.
-                if ((matchObj[i][0] == 'f') \
-                    and (handRoundCounter < (gameDefinition.numRounds-1)) \
-                    and (actingPlayer == gameDefinition.firstToAct[gameDefinition+1]) \
-                    ):
-                    print('Player=', i, ' has folded and is the next to act in subsequent rounds')
-                    print('Re-setting gameDefinition.firstToAct for all subsequent rounds')
-                    for j in range (handRoundCounter+1, (gameDefinition.numRounds)):
-                        print('gameDefinition.firstToAct[', j, ']=', gameDefinition.firstToAct[i], 
-                              'resetting to ', gameDefinition.firstToAct[j]+1)
-                        gameDefinition.firstToAct[j] = gameDefinition.firstToAct[j]+1
-                    
+                # If the actingPlayerPosition has currently folded then increment the
+                # actingPlayerPosition until you hit a position that hasn't folded
+                print('players[', actingPlayerSeat, '].folded=', players[actingPlayerSeat].folded)
+                while (players[actingPlayerSeat].folded):
+                    print('actingPlayerPosition=', actingPlayerPosition, 
+                          ' actingPlayerSeat=', actingPlayerSeat, 
+                          ' has previously folded. Continuing to the next position')
+                    actingPlayerPosition = (actingPlayerPosition + 1) % gameDefinition.numPlayers
+                    actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
+                                                     gameDefinition.numPlayers)
+           
+                # Assign the bet for the player in this position
+                bet = matchObj[betCounter]
                 
-                actingPlayer = (actingPlayer + 1) % numPlayers
+                actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
+                                                 gameDefinition.numPlayers)
+                
+                print('Assigning a bet to actingPlayerPosition=', actingPlayerPosition,
+                      ' actingPlayerSeat=', actingPlayerSeat,
+                      ' bet=', bet) 
+                betsForThisHandRound[actingPlayerSeat].append(bet)
+                print('betsForThisHandRound=', betsForThisHandRound)
+                if (bet[1] =='f'):
+                    players[actingPlayerSeat].folded = True
+                    players[actingPlayerSeat].foldedHandRound = handRoundCounter
+                    print('Folded! Player in actingPlayerPosition=', actingPlayerPosition,
+                          ' actingPlayerSeat=', actingPlayerSeat, ' has folded')
+                
+                # Move the betCounter over by one and move the actingPlayerPosition over by one
+                betCounter = betCounter + 1
+                actingPlayerPosition = (actingPlayerPosition + 1) % gameDefinition.numPlayers
+                
         else:
-            print('no match found for betting')
-
-        # an optimization would be to move this to the initalization section 
-        # of betsForThisRound above
-        for actingPlayer in range (0, gameDefinition.numPlayers):
-            print('actingPlayer=', actingPlayer, 
-                  ' handRoundCounter=', handRoundCounter)
-            print('betsForThisRound[', actingPlayer, ']=', betsForThisRound[actingPlayer])
-#            players[actingPlayer].bet[handRoundCounter] = betsForThisRound[actingPlayer]
-            players[actingPlayer].bet.insert(handRoundCounter, betsForThisRound[actingPlayer])
-            print('players[', actingPlayer, '].bet[', handRoundCounter, 
-                  ']=', players[actingPlayer].bet[handRoundCounter])       
+            print('No one has bet before you this handRound. You are first to act')
     
-    # Advance the handRound.
-    # handRound = 0 means pre-flop
-    # handRound = 1 means flop
-    # handRound = 2 means turn
-    # handRound = 3 means river
-    #print('about to increment handRound from handRound=', handRound, 
-    #      ' to handRound=' , (handRound + 1) % gameDefinition.numRounds)          
-    #handRound = (handRound + 1) % gameDefinition.numRounds
-
-    return(myPosition, flopCards, turnCard, riverCard, 
-           actionState, handRound, handNumber, firstToActThisRoundSeat)
+        # Assign all the bets for this hand round to the players
+        for actingPlayerSeatCounter in range (0, gameDefinition.numPlayers):
+            players[actingPlayerSeatCounter].bet.insert(handRoundCounter, betsForThisHandRound[actingPlayerSeatCounter])
+            
+    return(myPosition, boardCards, 
+           actionState, handRound, handNumber, firstToActThisRoundSeat, 
+           foldedSeat)
     
     
 
@@ -339,43 +387,55 @@ for i in range (0, gameDefinition.numPlayers):
 print ('players[0].stackSize=', players[0].stackSize)
 
 # start communicating with the dealer
-HOST = sys.argv[2]   
-PORT = int(sys.argv[3]) 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((HOST, PORT))
-versionString = "VERSION:2.0.0\r\n"
-s.send(versionString.encode('utf-8'))
+# xxx temporarily commented out
+#HOST = sys.argv[2]   
+#PORT = int(sys.argv[3]) 
+#s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#s.connect((HOST, PORT))
+#versionString = "VERSION:2.0.0\r\n"
+#s.send(versionString.encode('utf-8'))
 
-# Now, start playing the game for real
-handRound = 0 # 0=pre-flop, 1=flop, 2=turn, 3=river
+# The foldedSeat list tells us if a player has folded
+# or not in this hand.
+# xxx We will have to re-initialize this after every hand. 
+# 
+foldedSeat = []
+for seatNumberCounter in range (0, gameDefinition.numPlayers):
+    foldedSeat.append(False)
+    
 cont= True
 while (cont == True):
     print('=======================================')
     print('Inside main. Just before receiving data')
-    data = ''
-    data = s.recv(2048)
-    dataString = data.decode('utf-8')
+# xxx temporarily commented out
+#    data = ''
+#    data = s.recv(2048)
+#    dataString = data.decode('utf-8')
+
+    # example for debugging dataString='MATCHSTATE:0:1:r11189cc/:Ks6h||/Ah3dTd'
+    # example for debugging dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
+    # example for debugging dataString = 'MATCHSTATE:0:0:c:Ks6h||'
+    # example for debugging dataString = 'MATCHSTATE:2:1:r11189cc/:||Tc4d/Ah3dTd'
+    dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
 
     print('Received dataString=', dataString)
     
     # decode the message that you received
-    [myPosition, flopCards, turnCard, riverCard, actionState, handRound, handNumber, firstToActThisRoundSeat] \
-        = decode(dataString, handRound, gameDefinition, players)
+    
+    [myPosition, boardCards, actionState, \
+     handRound, handNumber, firstToActThisRoundSeat, foldedSeat] \
+        = decode(dataString, foldedSeat, gameDefinition, players)
     
     print('Time for me to act.')
     print('myPosition=', myPosition,
           ' handRound=', handRound,
           ' handNumber=', handNumber,
+          ' boardCards=', boardCards,
           ' definition firstToAct[', handRound, ']=', gameDefinition.firstToAct[handRound],
           ' first to act this round=', firstToActThisRoundSeat)
-          
-          
-    print(' flopCards=', flopCards,
-          ' turnCard=', turnCard,
-          ' riverCard=', riverCard)
     
     for i in range (0, gameDefinition.numPlayers):
-        print('Inside main. player[', i, '].cards=', players[i].cards )
+        print('Inside main. player[', i, '].holeCards=', players[i].holeCards )
         
     print('Inside main. handRound=', handRound)
         
@@ -390,7 +450,9 @@ while (cont == True):
     dataString = actionState + ":" + bettingAction + '\r\n'
     print('Inside main. dataString=', dataString)
     data=dataString.encode('utf-8')
-    s.send(data)
+
+    # xxx temporarily commented out
+    # s.send(data)
     print('Inside main. just sent the data')
     
     # The dealer button will move in the next hand
