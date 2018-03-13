@@ -134,6 +134,24 @@ def readGameDefinition(gameDefinitionFile):
         
         return GameDefinition(gameType, numPlayers, numRounds, startingStack, blinds, firstToAct)
         
+# This function parses the handNumber out of the handState
+def getHandNumber(handState):
+        # First, split the action along '\r\n'
+    actionStates = handState.split('\r\n')
+    
+    # The handState that we need to react to is in the last element 
+    actionState = actionStates[len(actionStates)-2]
+    print('actionState=', actionState)
+    
+    splitState = actionState.split(':')
+    print('splitState=', splitState)
+    
+    handNumber   = int(splitState[2])
+
+    return handNumber
+    
+
+# This function parses all the information out of the handState
 def decode(handState, foldedSeat, gameDefinition, players):
     print('Inside decode. handState=', handState)
     
@@ -395,13 +413,9 @@ print ('players[0].stackSize=', players[0].stackSize)
 #versionString = "VERSION:2.0.0\r\n"
 #s.send(versionString.encode('utf-8'))
 
-# The foldedSeat list tells us if a player has folded
-# or not in this hand.
-# xxx We will have to re-initialize this after every hand. 
-# 
-foldedSeat = []
-for seatNumberCounter in range (0, gameDefinition.numPlayers):
-    foldedSeat.append(False)
+
+    
+lastHandRound = -1
     
 cont= True
 while (cont == True):
@@ -419,6 +433,28 @@ while (cont == True):
     dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
 
     print('Received dataString=', dataString)
+
+    handRound = getHandNumber(dataString)
+    # If the hand round has incremented then reset the variables that are used
+    # to keep track of this hand
+    # The foldedSeat list tells us if a player has folded
+    # or not in this hand.
+    if (lastHandRound != handRound):
+        lastHandRound = handRound
+        foldedSeat = []
+        for seatNumberCounter in range (0, gameDefinition.numPlayers):
+            foldedSeat.append(False)
+            
+        if (handRound > 0):
+            # Save the historical values from this hand inside the player's
+            # historical data
+            for seatNumberCounter in range (0, gameDefinition.numPlayers):
+                players[seatNumberCounter].historicalBet.append(players[seatNumberCounter].bet)
+                players[seatNumberCounter].historicalCards.append(players[seatNumberCounter].holeCards)
+                
+                # The computer poker competition plays by "Doyle's Rule", which is
+                # that the stacks are reset after every hand
+                players[seatNumberCounter].stackSize = gameDefinition.startingStack
     
     # decode the message that you received
     
