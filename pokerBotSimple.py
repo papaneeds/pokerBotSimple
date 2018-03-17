@@ -36,9 +36,38 @@ class Player(object):
         self.bet = []  # The bets made during the hand, indexed by handRound
         self.folded = False # Whether the player has folded
         self.foldedHandRound = -1 # The handRound that they folded in.
+     
+    # This function resets all the variables for the current hand
+    def resetCurrentState(self):
+        self.holeCards = ""
+        self.bet = []  # The bets made during the hand, indexed by handRound
+        self.folded = False # Whether the player has folded
+        self.foldedHandRound = -1 # The handRound that they folded in.  
         
-        
+    # This function saves historical information
+    def addCurrentHandToHistoricalInfo(self):       
+        self.historicalBet.append(self.bet)
+        self.historicalCards.append(self.holeCards)
 
+    # This function sets the player's stack size                
+    def setStackSize(self, stackSize):
+        self.stackSize = stackSize
+        
+    # This function writes the current hand out as a string
+    def currentHandAsString(self):
+        delimiter = '\r\n'
+        outputString = 'holeCards=' + self.holeCards + delimiter
+        xxx try out this stuff in the actual body of the main program before
+        you get here.
+        outputString += 'bet='
+        for betCounter in (0, len(self.bet)):
+            for handRoundBetCounter in (0, len(self.bet[betCounter])):
+                outputString += self.bet[betCounter][handRoundBetCounter]
+        outputString += delimiter
+        outputString += 'folded=' + self.folded + delimiter
+        outputString += 'foldedHandRound=' + self.foldedHandRound + delimiter
+        return outputString
+        
 # Define a gameDefinitionClass that will hold the game definition
 class GameDefinition(object):
     gameType = "" 
@@ -279,8 +308,10 @@ def decode(handState, foldedSeat, gameDefinition, players):
     for handRoundCounter in range(0, handRound+1):   
         
         # a temporary variable to hold the bets 
-        # for this round for a particular acting player
+        # for this round for each player. Indexed by seatNumber
         betsForThisHandRound = []
+        for seatNumberCounter in range (0, gameDefinition.numPlayers):
+            betsForThisHandRound.append([])
         
         print('betting[', handRoundCounter, ']=', betting[handRoundCounter])
         matchObj = re.findall(r'((\S)(\d+)?)', betting[handRoundCounter])
@@ -302,11 +333,6 @@ def decode(handState, foldedSeat, gameDefinition, players):
             # You are not first to act on this hand round
             # Someone has bet before you.
             print('Someone has bet before me. matchObj=', matchObj)
-            
-            # Initialize a temporary list that will hold the bets
-            # for each player
-            for seatNumberCounter in range (0, gameDefinition.numPlayers):
-                betsForThisHandRound.append([])
                 
             print('betsForThisHandRound=', betsForThisHandRound)
             
@@ -348,17 +374,24 @@ def decode(handState, foldedSeat, gameDefinition, players):
                     players[actingPlayerSeat].foldedHandRound = handRoundCounter
                     print('Folded! Player in actingPlayerPosition=', actingPlayerPosition,
                           ' actingPlayerSeat=', actingPlayerSeat, ' has folded')
+                    foldedSeat[actingPlayerSeat] = True
                 
                 # Move the betCounter over by one and move the actingPlayerPosition over by one
                 betCounter = betCounter + 1
                 actingPlayerPosition = (actingPlayerPosition + 1) % gameDefinition.numPlayers
                 
-        else:
+
+        else: # if (len(matchObj) > 0)
             print('No one has bet before you this handRound. You are first to act')
-    
+            
         # Assign all the bets for this hand round to the players
         for actingPlayerSeatCounter in range (0, gameDefinition.numPlayers):
+#            print('actingPlayerSeatCounter=', actingPlayerSeatCounter)
+#            print('handRoundCounter=', handRoundCounter)
+#            print('betsForThisHandRound=', betsForThisHandRound)
+#            print('betsForThisHandRound[', actingPlayerSeatCounter,']=', betsForThisHandRound[actingPlayerSeatCounter])
             players[actingPlayerSeatCounter].bet.insert(handRoundCounter, betsForThisHandRound[actingPlayerSeatCounter])
+    
             
     return(myPosition, boardCards, 
            actionState, handRound, handNumber, firstToActThisRoundSeat, 
@@ -384,6 +417,10 @@ serverDirectory        = '/home/tompokerlinux/Documents/project_acpc_server/'
 gameDefinitionFilename = sys.argv[1]
 gameDefinition         = readGameDefinition(serverDirectory + gameDefinitionFilename)
 
+# open a file to save the historical hands to
+historicalHandsFilename = '/home/tompokerlinux/Documents/pokerBot/pokerBotSimple.txt'
+historicalHandsFile = open(historicalHandsFilename, 'w')
+
 #print('Inside main. gameType=', gameDefinition.gameType)
 #print('Inside main. numPlayers=', gameDefinition.numPlayers)
 #print('Inside main. numRounds=', gameDefinition.numRounds)
@@ -405,32 +442,32 @@ for i in range (0, gameDefinition.numPlayers):
 print ('players[0].stackSize=', players[0].stackSize)
 
 # start communicating with the dealer
-# xxx temporarily commented out
-#HOST = sys.argv[2]   
-#PORT = int(sys.argv[3]) 
-#s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#s.connect((HOST, PORT))
-#versionString = "VERSION:2.0.0\r\n"
-#s.send(versionString.encode('utf-8'))
+HOST = sys.argv[2]   
+PORT = int(sys.argv[3]) 
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((HOST, PORT))
+versionString = "VERSION:2.0.0\r\n"
+s.send(versionString.encode('utf-8'))
 
 
     
-lastHandRound = -1
+firstHandRound = -1
+lastHandRound = firstHandRound
     
 cont= True
 while (cont == True):
     print('=======================================')
     print('Inside main. Just before receiving data')
-# xxx temporarily commented out
-#    data = ''
-#    data = s.recv(2048)
-#    dataString = data.decode('utf-8')
+
+    data = ''
+    data = s.recv(2048)
+    dataString = data.decode('utf-8')
 
     # example for debugging dataString='MATCHSTATE:0:1:r11189cc/:Ks6h||/Ah3dTd'
     # example for debugging dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
     # example for debugging dataString = 'MATCHSTATE:0:0:c:Ks6h||'
     # example for debugging dataString = 'MATCHSTATE:2:1:r11189cc/:||Tc4d/Ah3dTd'
-    dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
+    # dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
 
     print('Received dataString=', dataString)
 
@@ -440,21 +477,27 @@ while (cont == True):
     # The foldedSeat list tells us if a player has folded
     # or not in this hand.
     if (lastHandRound != handRound):
+        if ((handRound > 0) & (lastHandRound != firstHandRound)):
+            # Save the historical values from this hand inside the player's
+            # historical data
+            for seatNumberCounter in range (0, gameDefinition.numPlayers):
+                players[seatNumberCounter].addCurrentHandToHistoricalInfo()
+                historicalHandsFile.write(players[seatNumberCounter].currentHandAsString())
+
+                # The computer poker competition plays by "Doyle's Rule", which is
+                # that the stacks are reset after every hand
+                players[seatNumberCounter].setStackSize(gameDefinition.startingStack)
+        
         lastHandRound = handRound
         foldedSeat = []
         for seatNumberCounter in range (0, gameDefinition.numPlayers):
             foldedSeat.append(False)
             
-        if (handRound > 0):
-            # Save the historical values from this hand inside the player's
-            # historical data
-            for seatNumberCounter in range (0, gameDefinition.numPlayers):
-                players[seatNumberCounter].historicalBet.append(players[seatNumberCounter].bet)
-                players[seatNumberCounter].historicalCards.append(players[seatNumberCounter].holeCards)
-                
-                # The computer poker competition plays by "Doyle's Rule", which is
-                # that the stacks are reset after every hand
-                players[seatNumberCounter].stackSize = gameDefinition.startingStack
+
+
+    # Reset the values for this hand
+    for seatNumberCounter in range (0, gameDefinition.numPlayers):
+        players[seatNumberCounter].resetCurrentState()
     
     # decode the message that you received
     
@@ -467,13 +510,15 @@ while (cont == True):
           ' handRound=', handRound,
           ' handNumber=', handNumber,
           ' boardCards=', boardCards,
-          ' definition firstToAct[', handRound, ']=', gameDefinition.firstToAct[handRound],
-          ' first to act this round=', firstToActThisRoundSeat)
+          ' (position) firstToAct[', handRound, ']=', gameDefinition.firstToAct[handRound],
+          ' first to act this round (seat)=', firstToActThisRoundSeat)
+    print('boardCards=', boardCards)
     
     for i in range (0, gameDefinition.numPlayers):
-        print('Inside main. player[', i, '].holeCards=', players[i].holeCards )
-        
-    print('Inside main. handRound=', handRound)
+        print('Inside main. players[', i, '].holeCards=', players[i].holeCards )
+        print('             players[', i, '].bet[', handRound, ']=', players[i].bet)
+        print('             players[', i, ']. folded=', players[i].folded )
+        print('             players[', i, ']. foldedHandRound=', players[i].foldedHandRound)
         
     bettingAction = 'c'
     betSize = 0
@@ -487,17 +532,11 @@ while (cont == True):
     print('Inside main. dataString=', dataString)
     data=dataString.encode('utf-8')
 
-    # xxx temporarily commented out
-    # s.send(data)
+    s.send(data)
     print('Inside main. just sent the data')
-    
-    # The dealer button will move in the next hand
-    # This means that the player number will move to the left by
-    # 1 postion.
-#    for i in range (0, gameDefinition.numPlayers):
-#        players[i].seatNumber = (players[i].seatNumber - 1) % gameDefinition.numPlayers
 
 s.close()
+historicalHandsFile.close()
 
 
 

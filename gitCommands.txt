@@ -2,7 +2,7 @@ Git cheat sheet:
 git init
 git status
 git add <filename>
-git commit -m "commit comment"
+git commit -m "commit comment" <filename>
 git log
 git remote add origin https://github.com/papaneeds/pokerBotSimple.git
 git push -u origin master

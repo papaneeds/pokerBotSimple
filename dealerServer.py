@@ -8,9 +8,20 @@ Created on Sat Feb 10 11:51:04 2018
 
 import sys
 import socket
+import signal
 
 # Server program to serve up a previous game 
 # 
+
+def signal_handler(signal, frame):
+    print('You pressed Ctrl+C!')
+    if (connectionOpen == True):
+        print('Closing the connection')
+        connection.close()
+        print('Closing the socket')
+        sock.close()
+        
+    sys.exit(0)
 
 def readGameHistory(gameHistoryFile, numPlayers, myPlayerNumber):
     outputString = []
@@ -52,6 +63,9 @@ def readGameHistory(gameHistoryFile, numPlayers, myPlayerNumber):
     return outputString
 
 # main program starts here
+    
+# register a signal handler to catch <ctrl>C
+signal.signal(signal.SIGINT, signal_handler)
 
 # parse the command line arguments that tell you:
 # 1. the game history file that you need to read in
@@ -84,7 +98,9 @@ gameHistory=readGameHistory(homeDirectory + gameHistoryFilename, numberOfPlayers
 print ('gameHistory=', gameHistory)
 # Open a socket server listener 
 # Create a TCP/IP socket
+global sock
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 # Bind the socket to the port
 server_address = (myIpAddress, myPort)
 print ('starting up on %s port %s' % server_address)
@@ -96,7 +112,11 @@ sock.listen(1)
 while True:
     # Wait for a connection
     print ('waiting for a connection')
-    connection, client_address = sock.accept()
+    global connection
+    global connectionOpen 
+    connectionOpen = False
+    (connection, client_address) = sock.accept()
+    connectionOpen = True
     print('connection=', connection, ' client_address=', client_address)
 
     try:
