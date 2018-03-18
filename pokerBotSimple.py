@@ -55,17 +55,19 @@ class Player(object):
         
     # This function writes the current hand out as a string
     def currentHandAsString(self):
+        
         delimiter = '\r\n'
         outputString = 'holeCards=' + self.holeCards + delimiter
-        xxx try out this stuff in the actual body of the main program before
-        you get here.
         outputString += 'bet='
-        for betCounter in (0, len(self.bet)):
-            for handRoundBetCounter in (0, len(self.bet[betCounter])):
-                outputString += self.bet[betCounter][handRoundBetCounter]
+        for handRoundCounter in range (0, len(self.bet)):
+            if (handRoundCounter > 0):
+                outputString += '/'
+            for betRoundCounter in range (0, len(self.bet[handRoundCounter])):
+                if (len(self.bet[handRoundCounter]) > 0):
+                    outputString += self.bet[handRoundCounter][betRoundCounter][0]
         outputString += delimiter
-        outputString += 'folded=' + self.folded + delimiter
-        outputString += 'foldedHandRound=' + self.foldedHandRound + delimiter
+        outputString += 'folded=' + str(self.folded) + delimiter
+        outputString += 'foldedHandRound=' + str(self.foldedHandRound) + delimiter
         return outputString
         
 # Define a gameDefinitionClass that will hold the game definition
@@ -451,11 +453,12 @@ s.send(versionString.encode('utf-8'))
 
 
     
-firstHandRound = -1
-lastHandRound = firstHandRound
+firstHandNumber = -1
+previousHandNumber = firstHandNumber
     
 cont= True
 while (cont == True):
+
     print('=======================================')
     print('Inside main. Just before receiving data')
 
@@ -471,24 +474,30 @@ while (cont == True):
 
     print('Received dataString=', dataString)
 
-    handRound = getHandNumber(dataString)
+    handNumber = getHandNumber(dataString)
     # If the hand round has incremented then reset the variables that are used
     # to keep track of this hand
     # The foldedSeat list tells us if a player has folded
     # or not in this hand.
-    if (lastHandRound != handRound):
-        if ((handRound > 0) & (lastHandRound != firstHandRound)):
+    if (previousHandNumber != handNumber):
+        if ((handNumber > 0) & (previousHandNumber != firstHandNumber)):
             # Save the historical values from this hand inside the player's
             # historical data
+            historicalHandsFile.write('============================================\n')
+            historicalHandsFile.write('Finished handNumber=' + str(previousHandNumber) + '\n')
+            outputString = 'myPosition=' + str(myPosition) + '\n'
+            outputString = 'mySeatNumber=' + str(getSeatNumber(myPosition, previousHandNumber, gameDefinition.numPlayers)) + '\n'
+            #+ ' boardCards=' + boardCards + '\n'
             for seatNumberCounter in range (0, gameDefinition.numPlayers):
                 players[seatNumberCounter].addCurrentHandToHistoricalInfo()
+                historicalHandsFile.write('*******Data for player in seatNumber=' + str(seatNumberCounter) + ':\n')
                 historicalHandsFile.write(players[seatNumberCounter].currentHandAsString())
 
                 # The computer poker competition plays by "Doyle's Rule", which is
                 # that the stacks are reset after every hand
                 players[seatNumberCounter].setStackSize(gameDefinition.startingStack)
         
-        lastHandRound = handRound
+        previousHandNumber = handNumber
         foldedSeat = []
         for seatNumberCounter in range (0, gameDefinition.numPlayers):
             foldedSeat.append(False)
@@ -519,12 +528,27 @@ while (cont == True):
         print('             players[', i, '].bet[', handRound, ']=', players[i].bet)
         print('             players[', i, ']. folded=', players[i].folded )
         print('             players[', i, ']. foldedHandRound=', players[i].foldedHandRound)
+#        delimiter = '\r\n'
+#        outputString = 'holeCards=' + players[i].holeCards + delimiter
+#        outputString += 'bet='
+#        for handRoundCounter in range (0, len(players[i].bet)):
+#            if (handRoundCounter > 0):
+#                outputString += '/'
+#            for betRoundCounter in range (0, len(players[i].bet[handRoundCounter])):
+#                if (len(players[i].bet[handRoundCounter]) > 0):
+#                    outputString += players[i].bet[handRoundCounter][betRoundCounter][0]
+#        outputString += delimiter
+#        outputString += 'folded=' + str(players[i].folded) + delimiter
+#        outputString += 'foldedHandRound=' + str(players[i].foldedHandRound) + delimiter
+#        print('outputString=', outputString)
         
     bettingAction = 'c'
     betSize = 0
     print('Inside main. player[', myPosition, ']. actionState=', actionState,
           'bettingAction=', bettingAction,
           ' betSize=', betSize)
+    
+
     
     # send the action back to the server
     #dataString = dataString + ":" + bettingAction + '\r\n'
