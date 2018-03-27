@@ -60,21 +60,25 @@ def probabilityMatrix(numIterations, numPlayers, numBoardCards, debug=False):
 debug = True
 
 # Create all possible pairs of hands
-numIterations = 100
-numPlayers = 3
-numBoardCards = 3
+numIterations = 1000
 
-probabilities = probabilityMatrix(numIterations, numPlayers, numBoardCards, debug)
+MAX_NUM_PLAYERS = 10
+NUM_BOARD_CARDS = [3, 4, 5]
 
-# Save the probabilities to a file 
-filename = './data/' + str(numPlayers) + 'Player' + str(numBoardCards) + 'numBoardCards' \
-    + 'ProbabilityMatrix'
-np.save(filename, probabilities)
+for numPlayers in range (2, MAX_NUM_PLAYERS+1):
+    for numBoardCards in NUM_BOARD_CARDS:
+        print ('numPlayers=', numPlayers, ' numBoardCards=', numBoardCards)
+        probabilities = probabilityMatrix(numIterations, numPlayers, numBoardCards, debug)
+        
+        # Save the probabilities to a file 
+        filename = './data/' + str(numPlayers) + 'Player' + str(numBoardCards) + 'numBoardCards' \
+            + 'ProbabilityMatrix'
+        np.save(filename, probabilities)
 
-# Display matrix
-plt.matshow(probabilities)
+        # Display matrix
+        plt.matshow(probabilities)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
 
-plt.show()
+        plt.show()
                   
 print('I am done')
         
