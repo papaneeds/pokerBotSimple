@@ -11,17 +11,17 @@ import preFlopValue
 import numpy as np
 import matplotlib.pyplot as plt
 
-def probabilityMatrix(numIterations, numPlayers, numBoardCards, debug=False):
+# Define a map between the suits and a number for indexing into an array
+INDEX_CHAR_SUIT_TO_INT_SUIT = {
+        's': 0,  # spades
+        'h': 1,  # hearts
+        'd': 2,  # diamonds
+        'c': 3,  # clubs
+}
+NUM_SUITS = 4
+NUM_CARDS_IN_DECK = 52
 
-    # Define a map between the suits and a number for indexing into an array
-    INDEX_CHAR_SUIT_TO_INT_SUIT = {
-            's': 0,  # spades
-            'h': 1,  # hearts
-            'd': 2,  # diamonds
-            'c': 3,  # clubs
-            }
-    NUM_SUITS = 4
-    NUM_CARDS_IN_DECK = 52
+def probabilityMatrix(numIterations, numPlayers, numBoardCards, debug=False):
 
     # A 2-d array of NUM_CARDS_IN_DECK * NUM_CARDS_IN_DECK to hold
     # the probabilities   
@@ -56,37 +56,12 @@ def probabilityMatrix(numIterations, numPlayers, numBoardCards, debug=False):
 
     return probabilities
 
-# Main program
-debug = True
-
-# Create all possible pairs of hands
-numIterations = 1000
-
-MAX_NUM_PLAYERS = 10
-NUM_BOARD_CARDS = [3, 4, 5]
-
-for numPlayers in range (2, MAX_NUM_PLAYERS+1):
-    for numBoardCards in NUM_BOARD_CARDS:
-        print ('numPlayers=', numPlayers, ' numBoardCards=', numBoardCards)
-        probabilities = probabilityMatrix(numIterations, numPlayers, numBoardCards, debug)
-        
-        # Save the probabilities to a file 
-        filename = './data/' + str(numPlayers) + 'Player' + str(numBoardCards) + 'numBoardCards' \
-            + 'ProbabilityMatrix'
-        np.save(filename, probabilities)
-
-        # Display matrix
-        plt.matshow(probabilities)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
-
-        plt.show()
-                  
-print('I am done')
-        
-#p1_hand = [
-#        treys.Card.new('Ah'),
-#        treys.Card.new('Ad')
-#        ]
-#
-#winner=preFlopValue.getOdds(p1_hand, 1000, 10, 5)
-#
-#print("winners=", winner)
+# This function returns the index of a particular card
+# The card is defined as a string like 'As' or '2c' or 'Td'
+def getIndexFromCard(cardAsString):
+    # Find the rank and suit of the card
+    rank1 = cardAsString[0]
+    suit1 = cardAsString[1]
+    index = (treys.Card.CHAR_RANK_TO_INT_RANK[rank1])*NUM_SUITS \
+        + INDEX_CHAR_SUIT_TO_INT_SUIT[suit1]  
+    return index    
