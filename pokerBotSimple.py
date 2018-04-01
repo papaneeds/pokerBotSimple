@@ -11,6 +11,10 @@ import gameUtilities
 import preFlopOddsBot  
 
 # main program starts here
+
+# Turning socketComms = False allows you to define input strings for debugging
+socketComms = False
+
 print ('Number of arguments:', len(sys.argv), 'arguments.')
 print ('Argument List:', str(sys.argv))
 
@@ -40,7 +44,7 @@ historicalHandsFile = open(historicalHandsFilename, 'w')
 #print('Inside main. firstToAct=', gameDefinition.firstToAct)
 
 # create the bot for the game
-threshold = 0.7 # fold all hands with less than 0.7 pre-flop probability of winning
+threshold = 0.5 # fold all hands with less than 0.7 pre-flop probability of winning
 dataDirectory = './data/' # This is where the pre-computed probability files are
 bot = preFlopOddsBot.PreFlopOddsBot(gameDefinition.numPlayers, 
                                     threshold, 
@@ -61,13 +65,12 @@ print ('players[0].stackSize=', players[0].stackSize)
 # start communicating with the dealer
 HOST = sys.argv[2]   
 PORT = int(sys.argv[3]) 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((HOST, PORT))
-versionString = "VERSION:2.0.0\r\n"
-s.send(versionString.encode('utf-8'))
-
-
-    
+if (socketComms):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((HOST, PORT))
+    versionString = "VERSION:2.0.0\r\n"
+    s.send(versionString.encode('utf-8'))
+   
 firstHandNumber = -1
 previousHandNumber = firstHandNumber
     
@@ -77,15 +80,18 @@ while (cont == True):
     print('=======================================')
     print('Inside main. Just before receiving data')
 
-    data = ''
-    data = s.recv(2048)
-    dataString = data.decode('utf-8')
-
-    # example for debugging dataString='MATCHSTATE:0:1:r11189cc/:Ks6h||/Ah3dTd'
-    # example for debugging dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
-    # example for debugging dataString = 'MATCHSTATE:0:0:c:Ks6h||'
-    # example for debugging dataString = 'MATCHSTATE:2:1:r11189cc/:||Tc4d/Ah3dTd'
-    # dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
+    if (socketComms):
+        data = ''
+        data = s.recv(2048)
+        dataString = data.decode('utf-8')
+    else:
+        # example for debugging dataString='MATCHSTATE:0:1:r11189cc/:Ks6h||/Ah3dTd'
+        # example for debugging dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
+        # example for debugging dataString = 'MATCHSTATE:0:0:c:Ks6h||'
+        # example for debugging dataString = 'MATCHSTATE:2:1:r11189cc/:||Tc4d/Ah3dTd'
+        # dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
+        # dataString = 'MATCHSTATE:2:0::||AdAs'
+        dataString = 'MATCHSTATE:0:0:r1400:5d5c||'
 
     print('Received dataString=', dataString)
 
@@ -156,17 +162,16 @@ while (cont == True):
 #        outputString += 'folded=' + str(players[i].folded) + delimiter
 #        outputString += 'foldedHandRound=' + str(players[i].foldedHandRound) + delimiter
 #        print('outputString=', outputString)
-        
-    bettingAction = bot.getBettingAction(handRound, 
+     
+    bettingAction = bot.getBettingAction(handNumber,
+                                         handRound, 
                                          myPosition, 
-                                         gameDefinition.firstToAct[handRound]
+                                         gameDefinition.firstToAct[handRound],
+                                         gameDefinition.numPlayers,
                                          players)
     
-    bettingAction = 'c'
-    betSize = 0
     print('Inside main. player[', myPosition, ']. actionState=', actionState,
-          'bettingAction=', bettingAction,
-          ' betSize=', betSize)
+          'bettingAction=', bettingAction)
     
 
     
@@ -176,7 +181,8 @@ while (cont == True):
     print('Inside main. dataString=', dataString)
     data=dataString.encode('utf-8')
 
-    s.send(data)
+    if (socketComms):
+        s.send(data)
     print('Inside main. just sent the data')
 
 s.close()

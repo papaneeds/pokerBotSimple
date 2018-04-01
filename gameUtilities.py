@@ -374,6 +374,9 @@ def decode(handState, foldedSeat, gameDefinition, players):
                     print('Folded! Player in actingPlayerPosition=', actingPlayerPosition,
                           ' actingPlayerSeat=', actingPlayerSeat, ' has folded')
                     foldedSeat[actingPlayerSeat] = True
+                elif (bet[1] == 'r'):
+                    # Decrease this player's stack size by the amount that they bet
+                    players[actingPlayerSeat].stackSize -= int(bet[2])
                 
                 # Move the betCounter over by one and move the actingPlayerPosition over by one
                 betCounter = betCounter + 1
