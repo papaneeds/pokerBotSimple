@@ -10,6 +10,8 @@ import sys
 import socket
 import signal
 
+debug = False
+
 # Server program to serve up a previous game 
 # 
 
@@ -34,7 +36,8 @@ def readGameHistory(gameHistoryFile, numPlayers, myPlayerNumber):
     # look for the lines that are from the player that
     # precedes myPlayerNumber (modulo numPlayers)
     previousPlayer = (myPlayerNumber - 1) % 3
-    print ('previousPlayer=', previousPlayer)
+    if (debug):
+        print ('previousPlayer=', previousPlayer)
     # print('Inside readGameHistory. Game History =', content)
     tempString = ''
     for x in content[:]:
@@ -47,15 +50,17 @@ def readGameHistory(gameHistoryFile, numPlayers, myPlayerNumber):
             if (playerNumber == myPlayerNumber):
                 outputString.append(tempString)
                 tempString = ''
-                print ('====================================')
-                print ('Finished Betting Round outputString=', outputString) 
+                if (debug):
+                    print ('====================================')
+                    print ('Finished Betting Round outputString=', outputString) 
 
         # collect the stuff that is meant for this player
         if ( splitStuff[0] == 'TO' ):
             playerNumber = int(splitStuff[1]) - 1  
             if (playerNumber == myPlayerNumber):
                 tempString = tempString + splitStuff[4] + '\r\n'
-                print('Appended another item. tempString=', tempString)
+                if (debug):
+                    print('Appended another item. tempString=', tempString)
 
     # append anything that is still hanging around in tempString
     outputString.append(tempString)   
@@ -95,7 +100,8 @@ numberOfPlayers=int(sys.argv[4])
 myPlayerNumber=int(sys.argv[5])
 gameHistory=readGameHistory(homeDirectory + gameHistoryFilename, numberOfPlayers, myPlayerNumber)
 
-print ('gameHistory=', gameHistory)
+if (debug):
+    print ('gameHistory=', gameHistory)
 # Open a socket server listener 
 # Create a TCP/IP socket
 global sock

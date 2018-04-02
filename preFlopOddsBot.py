@@ -50,37 +50,81 @@ class PreFlopOddsBot(object):
             # If you were planning on folding and everyone before you has just
             #    checked then you check to
             numChecks = 0
+            numRaised = 0
+            numFolded = 0
+            folded = [False] * numPlayers # an array to keep track of who folded
             someoneWentAllIn = False
             someoneRaised = False
             position = firstToActPosition
-            while (position != myPosition):
-                seatNumber = gameUtilities.getSeatNumber(position, 
-                                                         handNumber, 
-                                                         numPlayers)
-                # At this stage of the game numBetsByThisPlayer should always be 1
-                numBetsByThisPlayer = len(players[seatNumber].bet[handRound])
-                if (numBetsByThisPlayer > 0):
+            numPositionsExamined = 0
+            #while (position != myPosition):
+
+            
+            # There could be several rounds of betting for each
+            # handRound (pre-flop, flop, turn and river)
+            bettingRound = numPositionsExamined // numPlayers
+            
+            seatNumber = gameUtilities.getSeatNumber(position, 
+                                                     handNumber, 
+                                                     numPlayers)
+            
+            numBettingRoundsForThisPlayer = len(players[seatNumber].bet[handRound])
+            
+
+ 
+            # Keep iterating through players until you hit your position
+            # and find that you have not bet yet                       
+            while (  not (
+                            (position == myPosition)  
+                            & (bettingRound == numBettingRoundsForThisPlayer)
+                        )
+                ):
+
+                # Only consider players who have not folded
+                if (not folded[seatNumber]):
+                    currentBet = players[seatNumber].bet[handRound][bettingRound]
                     if (players[seatNumber].stackSize == 0):
                         # This player has gone all in. 
                         someoneWentAllIn = True
-                    elif (players[seatNumber].bet[0][1] == 'r'):
+                    elif (currentBet[1] == 'r'):
                         someoneRaised = True
-                    elif (players[seatNumber].bet[0][1] == 'c'):
+                        numRaised += 1
+                    elif (currentBet[1] == 'c'):
                         numChecks += 1
+                    elif (currentBet[1] == 'f'):
+                        numFolded += 1
+                        folded[seatNumber] = True
+                        
                 position += 1
                 position = position % numPlayers
+                numPositionsExamined += 1
+                
+                                
+                bettingRound = numPositionsExamined // numPlayers
+            
+                seatNumber = gameUtilities.getSeatNumber(position, 
+                                                         handNumber, 
+                                                         numPlayers)
+                
+                numBettingRoundsForThisPlayer = len(players[seatNumber].bet[handRound])
+                
                         
-            # If everyone before you checked then just check           
-            if (numChecks == (myPosition - firstToActPosition)):
-                bettingAction = 'c'
             #If anyone before you bet and you were not going all in then fold
-            elif (someoneRaised & (allIn == False)):
+            if (someoneRaised & (allIn == False)):
                 bettingAction = 'f'
             # If someone went all in before you and you were planning on
             # going all in then call
             elif (someoneWentAllIn & allIn):
                 bettingAction = 'c'
-                
+            # If no one raised before you then just call
+            # (even if you were not planning on going all in). You basically
+            # get free cards
+            elif ((not someoneRaised) & (not allIn)):
+                bettingAction = 'c'
+            else:
+                # Go all in
+                bettingAction = 'r' + str(players[mySeatNumber].stackSize)       
+               
         return bettingAction
             
             

@@ -5,10 +5,12 @@ Created on Sun Jan 14 10:14:14 2018
 
 @author: tompokerlinux
 """
-import sys
-import socket
+
 import gameUtilities 
-import preFlopOddsBot  
+import preFlopOddsBot
+import os  
+import socket
+import sys
 
 # main program starts here
 
@@ -44,8 +46,10 @@ historicalHandsFile = open(historicalHandsFilename, 'w')
 #print('Inside main. firstToAct=', gameDefinition.firstToAct)
 
 # create the bot for the game
-threshold = 0.5 # fold all hands with less than 0.7 pre-flop probability of winning
-dataDirectory = './data/' # This is where the pre-computed probability files are
+threshold = (1.1/gameDefinition.numPlayers) # fold all hands than a random chance + 0.1 of winning
+#cwd = os.getcwd()
+dir_path = os.path.dirname(os.path.realpath(__file__))
+dataDirectory = dir_path + '/data/' # This is where the pre-computed probability files are
 bot = preFlopOddsBot.PreFlopOddsBot(gameDefinition.numPlayers, 
                                     threshold, 
                                     dataDirectory)
@@ -73,6 +77,7 @@ if (socketComms):
    
 firstHandNumber = -1
 previousHandNumber = firstHandNumber
+foldedSeat = [False] * gameDefinition.numPlayers
     
 cont= True
 while (cont == True):
@@ -91,7 +96,11 @@ while (cont == True):
         # example for debugging dataString = 'MATCHSTATE:2:1:r11189cc/:||Tc4d/Ah3dTd'
         # dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
         # dataString = 'MATCHSTATE:2:0::||AdAs'
-        dataString = 'MATCHSTATE:0:0:r1400:5d5c||'
+        # hand=0, you are position=0, position=2 has raised r1400 dataString = 'MATCHSTATE:0:0:r1400:5d5c||'
+        # dataString = 'MATCHSTATE:0:0:ccr1c:AdAc||'
+        # dataString = 'MATCHSTATE:0:0:ccfccf:5d5c||'
+        dataString='MATCHSTATE:1:0:r9990cf/cr11588c/cc/r16910r20000:|9hQd|/8s4h6d/5s/Js\r\nMATCHSTATE:1:0:r9990cf/cr11588c/cc/r16910r20000c:5d5c|9hQd|8dAs/8s4h6d/5s/Js\r\nMATCHSTATE:0:1::Ks6h||\r\n'
+        previousHandNumber = 0
 
     print('Received dataString=', dataString)
 
@@ -100,14 +109,26 @@ while (cont == True):
     # to keep track of this hand
     # The foldedSeat list tells us if a player has folded
     # or not in this hand.
-    if (previousHandNumber != handNumber):
+    if (previousHandNumber != handNumber):        
         if ((handNumber > 0) & (previousHandNumber != firstHandNumber)):
+            # decode anything that happened in the last hand
+            lastActionInPreviousHand = gameUtilities.lastActionInPreviousHand(dataString)
+            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            print('There is a new hand. previousHandNumber=', previousHandNumber,
+                  ' currentHandNumber=', handNumber, ' lastActionInPreviousHand=', lastActionInPreviousHand)
+            [myPosition, boardCards, actionState, \
+                 handRound, handNumber, firstToActThisRoundSeat, foldedSeat] \
+                 = gameUtilities.decode(lastActionInPreviousHand, foldedSeat, gameDefinition, players)
+
+            # Figure out who won the hand
+            
+                       
             # Save the historical values from this hand inside the player's
             # historical data
             historicalHandsFile.write('============================================\n')
             historicalHandsFile.write('Finished handNumber=' + str(previousHandNumber) + '\n')
             outputString = 'myPosition=' + str(myPosition) + '\n'
-            outputString = 'mySeatNumber=' + str(getSeatNumber(myPosition, previousHandNumber, gameDefinition.numPlayers)) + '\n'
+            outputString = 'mySeatNumber=' + str(gameUtilities.getSeatNumber(myPosition, previousHandNumber, gameDefinition.numPlayers)) + '\n'
             #+ ' boardCards=' + boardCards + '\n'
             for seatNumberCounter in range (0, gameDefinition.numPlayers):
                 players[seatNumberCounter].addCurrentHandToHistoricalInfo()
@@ -116,12 +137,10 @@ while (cont == True):
 
                 # The computer poker competition plays by "Doyle's Rule", which is
                 # that the stacks are reset after every hand
-                players[seatNumberCounter].setStackSize(gameDefinition.startingStack)
+                players[seatNumberCounter].setStackSize(gameDefinition.startingStack[seatNumberCounter])
         
         previousHandNumber = handNumber
-        foldedSeat = []
-        for seatNumberCounter in range (0, gameDefinition.numPlayers):
-            foldedSeat.append(False)
+        foldedSeat = [False] * gameDefinition.numPlayers
             
 
 
@@ -130,10 +149,11 @@ while (cont == True):
         players[seatNumberCounter].resetCurrentState()
     
     # decode the message that you received
+    lastActionState = gameUtilities.lastAction(dataString)
     
     [myPosition, boardCards, actionState, \
      handRound, handNumber, firstToActThisRoundSeat, foldedSeat] \
-        = gameUtilities.decode(dataString, foldedSeat, gameDefinition, players)
+        = gameUtilities.decode(lastActionState, foldedSeat, gameDefinition, players)
     
     print('Time for me to act.')
     print('myPosition=', myPosition,

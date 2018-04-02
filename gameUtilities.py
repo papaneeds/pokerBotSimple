@@ -169,19 +169,42 @@ def getHandNumber(handState):
     
     # The handState that we need to react to is in the last element 
     actionState = actionStates[len(actionStates)-2]
-    print('actionState=', actionState)
+    #print('actionState=', actionState)
     
     splitState = actionState.split(':')
-    print('splitState=', splitState)
+    #print('splitState=', splitState)
     
     handNumber   = int(splitState[2])
 
     return handNumber
     
+# This function returns the last action in the previous hand
+# It assumes a handState like:
+# MATCHSTATE:1:0:r11374r20000f:|9hQd|
+# MATCHSTATE:1:0:r11374r20000fc///:5d5c|9hQd|8dAs/8s4h6d/5s/Js
+# MATCHSTATE:0:1::Ks6h||
+# MATCHSTATE:0:1:c:Ks6h||   
+def lastActionInPreviousHand(handState):
+    print('Inside lastActionInPreviousHand. handState=', handState) 
+     
+    # First, split the action along '\r\n'
+    actionStates = handState.split('\r\n')
+    
+    # Now, cycle through the handState until  you find the boundary
+    # between hand numbers
+    for i in range (0, len(actionStates)-1):
+        currentHandNumber = int(actionStates[i].split(':')[2])
+        nextHandNumber    = int(actionStates[i+1].split(':')[2])
+         
+        if (currentHandNumber != nextHandNumber):
+            return actionStates[i]
+         
+    return 'Error! The boundary between handNumbers was not found!'
+     
 
-# This function parses all the information out of the handState
-def decode(handState, foldedSeat, gameDefinition, players):
-    print('Inside decode. handState=', handState)
+# This function returns the last action in a handState
+def lastAction(handState):
+    print('Inside lastAction. handState=', handState)
     
     # The handstate that is received has the format like:
     # MATCHSTATE:1:0:c:|9hQd\r\n
@@ -192,11 +215,18 @@ def decode(handState, foldedSeat, gameDefinition, players):
     actionStates = handState.split('\r\n')
     
     # The handState that we need to react to is in the last element 
-    actionState = actionStates[len(actionStates)-2]
-    print('actionState=', actionState)
+    lastActionState = actionStates[len(actionStates)-2]
+    print('lastActionState=', lastActionState)
+    
+    return lastActionState
+
+
+# This function parses all the information out of the handState
+def decode(actionState, foldedSeat, gameDefinition, players):
+    print('Inside decode. actionState=', actionState)
     
     splitState = actionState.split(':')
-    print('splitState=', splitState)
+    #print('splitState=', splitState)
     myPosition = int(splitState[1]) 
     
     handNumber   = int(splitState[2])
@@ -238,7 +268,7 @@ def decode(handState, foldedSeat, gameDefinition, players):
     #    cards = '', 9hQd, /8s4h6d/5s/6s
     #
     numPlayers=len(cards)
-    print('numPlayers=', numPlayers, 'gameDefinition.numPlayers=', gameDefinition.numPlayers)
+    #print('numPlayers=', numPlayers, 'gameDefinition.numPlayers=', gameDefinition.numPlayers)
     if ( numPlayers != gameDefinition.numPlayers):
         print('ERROR!. numPlayers should be the same as gameDefinition.numPlayers!')
     
@@ -257,13 +287,13 @@ def decode(handState, foldedSeat, gameDefinition, players):
     #  So, the last player's cards (player in position = 3) are '' (we can't see them)
     #  and the betting cards are 8s4h6d/5s
     temp = cards[numPlayers-1].split('/')
-    print('temp=', temp)
+    #print('temp=', temp)
     holeCards.append(temp[0])
     
     # The hand round is the number of betting rounds that there are.
     # handRound is indexed starting at 0 for pre-flop.
     handRound = len(temp)-1
-    print('handRound=', handRound)
+    #print('handRound=', handRound)
     
     # Assign the board cards
     # Board cards are indexed by hand round.
@@ -277,16 +307,16 @@ def decode(handState, foldedSeat, gameDefinition, players):
     # assign each player their hole cards 
     for position in range (0, numPlayers):
         # Assign each player their cards
-        print("Inside decode. position=", position)
+        #print("Inside decode. position=", position)
         # The hole cards array is indexed by position, whereas the 
         # players are indexed by seatNumber. So, convert position 
         # into seatNumber
         seatNumber = getSeatNumber(position, handNumber, numPlayers)
         players[seatNumber].holeCards = holeCards[position]
-        print('Inside decode. position=', position, 
-              ' seatNumber=', seatNumber, 
-              ' players[', seatNumber, '].holeCards=', players[seatNumber].holeCards,
-              ' stackSize=', players[seatNumber].stackSize)
+        #print('Inside decode. position=', position, 
+        #      ' seatNumber=', seatNumber, 
+        #      ' players[', seatNumber, '].holeCards=', players[seatNumber].holeCards,
+        #      ' stackSize=', players[seatNumber].stackSize)
                    
     # Parse out any betting that has happened.
     # The betting strings that are expected by this regular
@@ -312,11 +342,11 @@ def decode(handState, foldedSeat, gameDefinition, players):
         for seatNumberCounter in range (0, gameDefinition.numPlayers):
             betsForThisHandRound.append([])
         
-        print('betting[', handRoundCounter, ']=', betting[handRoundCounter])
+        #print('betting[', handRoundCounter, ']=', betting[handRoundCounter])
         matchObj = re.findall(r'((\S)(\d+)?)', betting[handRoundCounter])
-        print('numberOfMatches=', len(matchObj))
-        for i in range (0, len(matchObj)):
-            print ('i=', i, ' matchObj[', i, ']=', matchObj[i])
+        #print('numberOfMatches=', len(matchObj))
+        #for i in range (0, len(matchObj)):
+        #   print ('i=', i, ' matchObj[', i, ']=', matchObj[i])
         
         # Find out which position acts first on this hand round
         actingPlayerPosition = gameDefinition.firstToAct[handRoundCounter]
@@ -325,15 +355,15 @@ def decode(handState, foldedSeat, gameDefinition, players):
         actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
                                          gameDefinition.numPlayers)
         
-        print('The player acting first in this hand round is actingPlayerPosition=', actingPlayerPosition, 
-              ' actingPlayerSeat=', actingPlayerSeat)
+        #print('The player acting first in this hand round is actingPlayerPosition=', actingPlayerPosition, 
+        #      ' actingPlayerSeat=', actingPlayerSeat)
         
         if (len(matchObj) > 0) :
             # You are not first to act on this hand round
             # Someone has bet before you.
-            print('Someone has bet before me. matchObj=', matchObj)
+            #print('Someone has bet before me. matchObj=', matchObj)
                 
-            print('betsForThisHandRound=', betsForThisHandRound)
+            #print('betsForThisHandRound=', betsForThisHandRound)
             
             # A variable to index the bets
             betCounter = 0;
@@ -348,11 +378,11 @@ def decode(handState, foldedSeat, gameDefinition, players):
                 
                 # If the actingPlayerPosition has currently folded then increment the
                 # actingPlayerPosition until you hit a position that hasn't folded
-                print('players[', actingPlayerSeat, '].folded=', players[actingPlayerSeat].folded)
+                #print('players[', actingPlayerSeat, '].folded=', players[actingPlayerSeat].folded)
                 while (players[actingPlayerSeat].folded):
-                    print('actingPlayerPosition=', actingPlayerPosition, 
-                          ' actingPlayerSeat=', actingPlayerSeat, 
-                          ' has previously folded. Continuing to the next position')
+                    #print('actingPlayerPosition=', actingPlayerPosition, 
+                    #     ' actingPlayerSeat=', actingPlayerSeat, 
+                    #      ' has previously folded. Continuing to the next position')
                     actingPlayerPosition = (actingPlayerPosition + 1) % gameDefinition.numPlayers
                     actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
                                                      gameDefinition.numPlayers)
@@ -363,28 +393,28 @@ def decode(handState, foldedSeat, gameDefinition, players):
                 actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
                                                  gameDefinition.numPlayers)
                 
-                print('Assigning a bet to actingPlayerPosition=', actingPlayerPosition,
-                      ' actingPlayerSeat=', actingPlayerSeat,
-                      ' bet=', bet) 
+                #print('Assigning a bet to actingPlayerPosition=', actingPlayerPosition,
+                #      ' actingPlayerSeat=', actingPlayerSeat,
+                #      ' bet=', bet) 
                 betsForThisHandRound[actingPlayerSeat].append(bet)
-                print('betsForThisHandRound=', betsForThisHandRound)
+                #print('betsForThisHandRound=', betsForThisHandRound)
                 if (bet[1] =='f'):
                     players[actingPlayerSeat].folded = True
                     players[actingPlayerSeat].foldedHandRound = handRoundCounter
-                    print('Folded! Player in actingPlayerPosition=', actingPlayerPosition,
-                          ' actingPlayerSeat=', actingPlayerSeat, ' has folded')
+                    #print('Folded! Player in actingPlayerPosition=', actingPlayerPosition,
+                    #      ' actingPlayerSeat=', actingPlayerSeat, ' has folded')
                     foldedSeat[actingPlayerSeat] = True
                 elif (bet[1] == 'r'):
                     # Decrease this player's stack size by the amount that they bet
-                    players[actingPlayerSeat].stackSize -= int(bet[2])
+                    print('decreasing stack size by bet[2]=', bet[2])
+                    print('int(bet[2]=', int(bet[2]))
+                    print('actingPlayerSeat=', actingPlayerSeat)
+                    print('players[actingPlayerSeat].stackSize=', players[actingPlayerSeat].stackSize)
+                    players[actingPlayerSeat].stackSize = gameDefinition.startingStack[actingPlayerSeat] - int(bet[2])
                 
                 # Move the betCounter over by one and move the actingPlayerPosition over by one
                 betCounter = betCounter + 1
                 actingPlayerPosition = (actingPlayerPosition + 1) % gameDefinition.numPlayers
-                
-
-        else: # if (len(matchObj) > 0)
-            print('No one has bet before you this handRound. You are first to act')
             
         # Assign all the bets for this hand round to the players
         for actingPlayerSeatCounter in range (0, gameDefinition.numPlayers):
