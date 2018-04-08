@@ -30,7 +30,7 @@ class PreFlopOddsBot(object):
         bettingAction = 'c' # Default betting action
         allIn = False
         
-        # This is pre-flop. Stay in this hand if the probability of 
+        # Stay in this hand if the probability of 
         # you winning pre-flop are greater than threshold
         mySeatNumber = gameUtilities.getSeatNumber(myPosition, handNumber, numPlayers)
         probability = simpleOdds.getOdds(self.oddsMatrix, players[mySeatNumber].holeCards)
@@ -48,7 +48,7 @@ class PreFlopOddsBot(object):
             # If anyone has gone all in, and you were planning on going all in
             #    then just call.
             # If you were planning on folding and everyone before you has just
-            #    checked then you check to
+            #    checked then you check too
             numChecks = 0
             numRaised = 0
             numFolded = 0
@@ -81,7 +81,15 @@ class PreFlopOddsBot(object):
                 ):
 
                 # Only consider players who have not folded
-                if (not folded[seatNumber]):
+#                if (not folded[seatNumber]):
+#                if ((not (players[seatNumber].folded)) or (len(players[seatNumber].bet[handRound]) == 0)):
+                if (not (players[seatNumber].folded)):
+                    print('Inside preFlopOddsBot. seatNumber=', seatNumber,
+                          ' folded[seatNumber]=', folded[seatNumber],
+                          ' handRound=', handRound,
+                          ' bettingRound=', bettingRound,
+                          'players[seatNumber].bet[handRound]=', players[seatNumber].bet[handRound],
+                          ' len(players[seatNumber].bet[handRound])=', len(players[seatNumber].bet[handRound]))
                     currentBet = players[seatNumber].bet[handRound][bettingRound]
                     if (players[seatNumber].stackSize == 0):
                         # This player has gone all in. 
@@ -107,7 +115,14 @@ class PreFlopOddsBot(object):
                                                          numPlayers)
                 
                 numBettingRoundsForThisPlayer = len(players[seatNumber].bet[handRound])
-                
+ 
+#                print('Inside preFlopOddsBot. position=', position, 
+#                      ' myPosition=', myPosition, 
+#                      '( position == myPosition)=', ( position == myPosition),
+#                      'bettingRound=', bettingRound,
+#                      ' numBettingRoundsForThisPlayer=', numBettingRoundsForThisPlayer,
+#                      ' (bettingRound == numBettingRoundsForThisPlayer)=', 
+#                      (bettingRound == numBettingRoundsForThisPlayer))
                         
             #If anyone before you bet and you were not going all in then fold
             if (someoneRaised & (allIn == False)):

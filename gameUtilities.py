@@ -185,7 +185,7 @@ def getHandNumber(handState):
 # MATCHSTATE:0:1::Ks6h||
 # MATCHSTATE:0:1:c:Ks6h||   
 def lastActionInPreviousHand(handState):
-    print('Inside lastActionInPreviousHand. handState=', handState) 
+    #print('Inside lastActionInPreviousHand. handState=', handState) 
      
     # First, split the action along '\r\n'
     actionStates = handState.split('\r\n')
@@ -193,6 +193,9 @@ def lastActionInPreviousHand(handState):
     # Now, cycle through the handState until  you find the boundary
     # between hand numbers
     for i in range (0, len(actionStates)-1):
+#        print('In lastActionInPreviousHand. i=', i)
+#        print('actionStates[i]=', actionStates[i])
+#        print('actionStates[i].split(:)=', actionStates[i].split(':'))
         currentHandNumber = int(actionStates[i].split(':')[2])
         nextHandNumber    = int(actionStates[i+1].split(':')[2])
          
@@ -204,7 +207,7 @@ def lastActionInPreviousHand(handState):
 
 # This function returns the last action in a handState
 def lastAction(handState):
-    print('Inside lastAction. handState=', handState)
+    #print('Inside lastAction. handState=', handState)
     
     # The handstate that is received has the format like:
     # MATCHSTATE:1:0:c:|9hQd\r\n
@@ -250,10 +253,10 @@ def decode(actionState, foldedSeat, gameDefinition, players):
     #     and so on.
     firstToActThisRoundSeat = ((gameDefinition.firstToAct[handRound]) + handNumber) % gameDefinition.numPlayers
        
-    print('myPosition=', myPosition,' handNumber=', handNumber,
-          ' betting=',betting,' handRound=', handRound, ' cards=', cards, 
-          ' firstToActThisRoundSeat=', firstToActThisRoundSeat,
-          ' mySeatNumber=', mySeatNumber)
+    #print('myPosition=', myPosition,' handNumber=', handNumber,
+    #      ' betting=',betting,' handRound=', handRound, ' cards=', cards, 
+    #      ' firstToActThisRoundSeat=', firstToActThisRoundSeat,
+    #      ' mySeatNumber=', mySeatNumber)
     
     # The hole cards are everything that appears before the first /
     # the flop, turn and river are everything that appears after the first /
@@ -406,10 +409,6 @@ def decode(actionState, foldedSeat, gameDefinition, players):
                     foldedSeat[actingPlayerSeat] = True
                 elif (bet[1] == 'r'):
                     # Decrease this player's stack size by the amount that they bet
-                    print('decreasing stack size by bet[2]=', bet[2])
-                    print('int(bet[2]=', int(bet[2]))
-                    print('actingPlayerSeat=', actingPlayerSeat)
-                    print('players[actingPlayerSeat].stackSize=', players[actingPlayerSeat].stackSize)
                     players[actingPlayerSeat].stackSize = gameDefinition.startingStack[actingPlayerSeat] - int(bet[2])
                 
                 # Move the betCounter over by one and move the actingPlayerPosition over by one
