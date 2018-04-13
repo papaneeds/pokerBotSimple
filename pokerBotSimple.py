@@ -82,15 +82,18 @@ previousHandNumber = -1
 foldedSeat = [False] * gameDefinition.numPlayers
     
 cont= True
+dataIn = ''
+handString = ''
+
 while (cont == True):
 
     print('=======================================')
     print('Inside main. Just before receiving data')
 
     if (socketComms):
-        data = ''
-        data = s.recv(4096)
-        dataString = data.decode('utf-8')
+        dataIn = s.recv(4096)
+        dataString = dataIn.decode('utf-8')
+        handString = handString + dataString
     else:
         # example for debugging dataString='MATCHSTATE:0:1:r11189cc/:Ks6h||/Ah3dTd'
         # example for debugging dataString = 'MATCHSTATE:0:0:cr23r45fr67c/cr89c/r57r9r11r12r15c/r6r7c:Ks6h|Qs5d|Tc4d/Ah3dTd/8c/Qd'
@@ -101,12 +104,20 @@ while (cont == True):
         # hand=0, you are position=0, position=2 has raised r1400 dataString = 'MATCHSTATE:0:0:r1400:5d5c||'
         # dataString = 'MATCHSTATE:0:0:ccr1c:AdAc||'
         # dataString = 'MATCHSTATE:0:0:ccfccf:5d5c||'
-        dataString='MATCHSTATE:1:0:r9990cf/cr11588c/cc/r16910r20000:|9hQd|/8s4h6d/5s/Js\r\nMATCHSTATE:1:0:r9990cf/cr11588c/cc/r16910r20000c:5d5c|9hQd|8dAs/8s4h6d/5s/Js\r\nMATCHSTATE:0:1::Ks6h||\r\nMATCHSTATE:0:1:c:Ks6h||\r\n'
+        # dataString='MATCHSTATE:1:0:r9990cf/cr11588c/cc/r16910r20000:|9hQd|/8s4h6d/5s/Js\r\nMATCHSTATE:1:0:r9990cf/cr11588c/cc/r16910r20000c:5d5c|9hQd|8dAs/8s4h6d/5s/Js\r\nMATCHSTATE:0:1::Ks6h||\r\nMATCHSTATE:0:1:c:Ks6h||\r\n'
+        # dataString ='MATCHSTATE:1:0:cr1cr2r3fr4r5r6c/r7r8c/r9r10r11c/r12r13r14r15c:|9hQd|/8s4h6d/5s/Js'
+        # dataString = 'MATCHSTATE:2:38:ccc/cr11052fc/cr17065c/cr18088r19194r20000f:||5d4d/9cTc8c/Kh/2c\r\nMATCHSTATE:1:39::|5h2s|\r\nMATCHSTATE:1:39:r19887:|5h2s|\r\n'
+        # dataString = 'MATCHSTATE:2:11:cr2863cc/:||8h7d/2s6sQd\r\nMATCHSTATE:2:11:cr2863cc/r15333:||8h7d/2s6sQd\r\nMATCHSTATE:2:11:cr2863cc/r15333r20000:||8h7d/2s6sQd\r\n'
+        #dataString = 'MATCHSTATE:0:34:fcc/cc/c:3d5c||/Js7c4s/5h\r\nMATCHSTATE:0:34:fcc/cc/cr16908:3d5c||/Js7c4s/5h\r\n'
+        dataString = 'MATCHSTATE:1:0:r12797ff:|9hQd|MATCHSTATE:0:1::Ks6h||\r\nMATCHSTATE:0:1:r1485:Ks6h||\r\n'
         previousHandNumber = 0
 
     print('Received dataString=', dataString)
+    print('         handString=', handString)
 
     handNumber = gameUtilities.getHandNumber(dataString)
+    print('handNumber =', handNumber, ' previousHandNumber=', previousHandNumber)
+    
     # If the hand has incremented then reset the variables that are used
     # to keep track of this hand
     # The foldedSeat list tells us if a player has folded
@@ -124,8 +135,9 @@ while (cont == True):
         
         # decode anything that happened in the last hand
         [myPosition, boardCards, actionState, \
-         handRound, handNumber, firstToActThisRoundSeat, foldedSeat] \
-         = gameUtilities.decode(lastActionInPreviousHand, foldedSeat, gameDefinition, players)
+         handRound, handNumber, firstToActThisRoundSeat, foldedSeat, Error] \
+         = gameUtilities.decode(lastActionInPreviousHand, 
+                                foldedSeat, gameDefinition, players, False)
 
         # Figure out who won the hand
             
@@ -146,7 +158,11 @@ while (cont == True):
             # that the stacks are reset after every hand
             players[seatNumberCounter].setStackSize(gameDefinition.startingStack[seatNumberCounter])
         
+        # Reset the variables used to keep track of this hand
         foldedSeat = [False] * gameDefinition.numPlayers
+        
+        handString = ''
+        
 
     # Reset the values for this hand
     for seatNumberCounter in range (0, gameDefinition.numPlayers):
@@ -155,42 +171,51 @@ while (cont == True):
     # decode the message that you received
     lastActionState = gameUtilities.lastAction(dataString)
     
+    # gameUtilities.isItMyTurnToAct(lastActionState, gameDefinition, players)
+    
     [myPosition, boardCards, actionState, \
-     handRound, handNumber, firstToActThisRoundSeat, foldedSeat] \
-        = gameUtilities.decode(lastActionState, foldedSeat, gameDefinition, players)
+     handRound, handNumber, firstToActThisRoundSeat, foldedSeat, Error] \
+        = gameUtilities.decode(lastActionState, foldedSeat, gameDefinition, players, True)
     
-    print('Time for me to act.')
-    print('mySeatNumber=', gameUtilities.getSeatNumber(myPosition, handNumber, gameDefinition.numPlayers),
-            ' myPosition=', myPosition,
-            ' handRound=', handRound,
-            ' handNumber=', handNumber,
-            ' boardCards=', boardCards,
-            ' (position) firstToAct[', handRound, ']=', gameDefinition.firstToAct[handRound],
-            ' first to act this round (seat)=', firstToActThisRoundSeat)
-    print('boardCards=', boardCards)
+    if (not Error):
+        
+        print('Time for me to act.')
+        print('mySeatNumber=', gameUtilities.getSeatNumber(myPosition, handNumber, gameDefinition.numPlayers),
+              ' myPosition=', myPosition,
+              ' handRound=', handRound,
+              ' handNumber=', handNumber,
+              ' boardCards=', boardCards,
+              ' (position) firstToAct[', handRound, ']=', gameDefinition.firstToAct[handRound],
+              ' first to act this round (seat)=', firstToActThisRoundSeat)
+        print('boardCards=', boardCards)
+        
+        for seatNumberCounter in range (0, gameDefinition.numPlayers):
+            print('Player[', seatNumberCounter, ']=', players[seatNumberCounter].currentHandAsString())
+            
+        bettingAction = bot.getBettingAction(handNumber,
+                                             handRound, 
+                                             myPosition, 
+                                             gameDefinition.firstToAct[handRound],
+                                             gameDefinition.numPlayers,
+                                             players)
     
-    for seatNumberCounter in range (0, gameDefinition.numPlayers):
-        print('Player[', seatNumberCounter, ']=', players[seatNumberCounter].currentHandAsString())
-     
-    bettingAction = bot.getBettingAction(handNumber,
-                                         handRound, 
-                                         myPosition, 
-                                         gameDefinition.firstToAct[handRound],
-                                         gameDefinition.numPlayers,
-                                         players)
+        print('Inside main. player[', myPosition, ']. actionState=', actionState,
+              'bettingAction=', bettingAction)
     
-    print('Inside main. player[', myPosition, ']. actionState=', actionState,
-          'bettingAction=', bettingAction)
-    
-    # send the action back to the server
-    #dataString = dataString + ":" + bettingAction + '\r\n'
-    dataString = actionState + ":" + bettingAction + '\r\n'
-    print('Inside main. dataString=', dataString)
-    data=dataString.encode('utf-8')
+        # send the action back to the server
+        #dataString = dataString + ":" + bettingAction + '\r\n'
+        dataString = actionState + ":" + bettingAction + '\r\n'
+        print('Inside main. dataString=', dataString)
+        dataOut=dataString.encode('utf-8')
 
-    if (socketComms):
-        s.send(data)
-    print('Inside main. just sent the data')
+        if (socketComms):
+            s.send(dataOut)
+        print('Inside main. just sent the data')
+        dataIn = ''
+    else:
+        # The actionString that you parsed was not good. Go back and get some
+        # more of it
+        print ('problems!')
 
 s.close()
 historicalHandsFile.close()

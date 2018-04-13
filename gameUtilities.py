@@ -224,8 +224,25 @@ def lastAction(handState):
     return lastActionState
 
 
-# This function parses all the information out of the handState
-def decode(actionState, foldedSeat, gameDefinition, players):
+# This function parses all the information out of the handState.
+# Parameters: 
+#     actionState : Input = a string that contains the action as sent to you by the poker server.
+#     ie 'MATCHSTATE:2:38:ccc/cr11052fc/cr17065c/cr18088r19194r20000f:||5d4d/9cTc8c/Kh/2c'
+#     
+#     foldedSeat : Input/Output - an array of players who folded. Values are seat positions
+# 
+#     gameDefintion : Input - the GameDefinition object
+# 
+#     players : Input/Output - the players
+# 
+#     checkForPositionValidity - Input - boolean - check to see whether the 
+#         actionState that you got is consistent with your current position
+#         Set this to False if you are evaluating a previous hand
+#         Set this to True if you are evaluating the validity of an actionState
+#           i.e. whether the actionState that you got is consistent with your current 
+#                position.
+
+def decode(actionState, foldedSeat, gameDefinition, players, checkForPositionValidity):
     print('Inside decode. actionState=', actionState)
     
     splitState = actionState.split(':')
@@ -354,9 +371,7 @@ def decode(actionState, foldedSeat, gameDefinition, players):
         # Find out which position acts first on this hand round
         actingPlayerPosition = gameDefinition.firstToAct[handRoundCounter]
         
-        # Find out which seat this corresponds to
-        actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
-                                         gameDefinition.numPlayers)
+
         
         #print('The player acting first in this hand round is actingPlayerPosition=', actingPlayerPosition, 
         #      ' actingPlayerSeat=', actingPlayerSeat)
@@ -414,7 +429,8 @@ def decode(actionState, foldedSeat, gameDefinition, players):
                 # Move the betCounter over by one and move the actingPlayerPosition over by one
                 betCounter = betCounter + 1
                 actingPlayerPosition = (actingPlayerPosition + 1) % gameDefinition.numPlayers
-            
+
+
         # Assign all the bets for this hand round to the players
         for actingPlayerSeatCounter in range (0, gameDefinition.numPlayers):
 #            print('actingPlayerSeatCounter=', actingPlayerSeatCounter)
@@ -422,9 +438,160 @@ def decode(actionState, foldedSeat, gameDefinition, players):
 #            print('betsForThisHandRound=', betsForThisHandRound)
 #            print('betsForThisHandRound[', actingPlayerSeatCounter,']=', betsForThisHandRound[actingPlayerSeatCounter])
             players[actingPlayerSeatCounter].bet.insert(handRoundCounter, betsForThisHandRound[actingPlayerSeatCounter])
-    
+
+    # Check to make sure that you are the next player to act
+    if (checkForPositionValidity):
+        print('checking for position validity. handRound=', handRoundCounter,
+              ' actingPlayerPosition=', actingPlayerPosition, 
+              ' myPosition=', myPosition)
+        
+        actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
+                                 gameDefinition.numPlayers)
+                
+        while (players[actingPlayerSeat].folded):
+            actingPlayerPosition = (actingPlayerPosition + 1) % gameDefinition.numPlayers
+            actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
+                                             gameDefinition.numPlayers)
+        
+        if (actingPlayerPosition != myPosition):
+            print('Everything is going to hell')
+            return(myPosition, boardCards, actionState, handRound, handNumber, 
+                   firstToActThisRoundSeat, foldedSeat, True)
+        else:
+            print('Everything is okay')    
             
     return(myPosition, boardCards, 
            actionState, handRound, handNumber, firstToActThisRoundSeat, 
-           foldedSeat)
+           foldedSeat, False)
+
+# Given an actionState, determine if it is your turn to act.
+def isItMyTurnToAct(actionState, gameDefinition, players):
+    print('Inside isItMyTurnToAct. actionState=', actionState)
+    
+    splitState = actionState.split(':')
+    myPosition = int(splitState[1]) 
+    
+    handNumber   = int(splitState[2])
+    betting      = splitState[3].split('/')
+    handRound    = len(betting)-1
+    
+    numPlayers = gameDefinition.numPlayers
+    
+    myPreviousBets = ''
+    
+    # Set an array which tells you which positions have folded
+    # This array is indexed by position (not by seatNumber)
+    folded = [False] * numPlayers
+                   
+    # Parse out any betting that has happened.
+    # The betting strings that are expected by this regular
+    # expression are of the form:
+    # r123ccfr456c
+    # The regular expression that matches this is
+    # (
+    #  (\S) match a character
+    #      (\d+)? match one or more optional digits
+    #            )
+        
+    # Cycle through all the bets for the various hand rounds
+    for handRoundCounter in range(0, handRound+1):   
+        
+        matchObj = re.findall(r'((\S)(\d+)?)', betting[handRoundCounter])
+#        print('numberOfMatches=', len(matchObj))
+#        for i in range (0, len(matchObj)):
+#           print ('i=', i, ' matchObj[', i, ']=', matchObj[i])
+        
+        # Find out which position acts first on this hand round
+        actingPlayerPosition = gameDefinition.firstToAct[handRoundCounter]
+        
+        # Find out how many bets there are before you
+        numberOfBets = len(matchObj)
+        
+        # If you are first to act and the number of matches is 0 then
+        # this it is your turn to act
+        if (len(matchObj) == 0):
+            return True        
+        else:
+            # You are not first to act on this hand round
+            # Someone has bet before you.
+            #print('Someone has bet before me. matchObj=', matchObj)
+
+            # A variable to index the bets
+            betCounter = 0;
+            
+            # A variable to index the betting rounds
+            # Each handRound (pre-flop, flop, turn, river) can contain one 
+            # or more betting rounds.
+            # The betting round increments when more than one round of the 
+            # table is made in this handRound of betting.
+            # For example, if it is pre-flop, with 3 players then the bets
+            # might look like this:
+            # cr1cr2r3fr4r5r6c
+            # which would indicate that in bettingRound = 0 cr1c
+            #                              bettingRound = 1 r2r3f
+            #                              bettingRound = 2 r4r5
+            #                              bettingRound = 3 r6c
+            bettingRound = 0
+            
+            # keep track of the number of folds, checks/calls and raises
+            numFolds = 0
+            numChecks = 0
+            numRaises = 0
+            numPositionsExamined = 0
+
+            while (betCounter < numberOfBets) :
+                
+                # Cycle through all the positions, starting at the actingPlayerPosition
+                # and assign their bets
+                
+                # If the actingPlayerPosition has currently folded then increment the
+                # actingPlayerPosition until you hit a position that hasn't folded
+                while (folded[actingPlayerPosition]):
+                    numPositionsExamined += 1
+                    numFolds += 1
+                    actingPlayerPosition = (actingPlayerPosition + 1) % numPlayers
+           
+                # Assign the bet for the player in this position
+                bet = matchObj[betCounter]
+                
+                if (actingPlayerPosition == myPosition):
+                    myPreviousBets = myPreviousBets + bet[0]
+                
+                if (bet[1] =='f'):
+                    folded[actingPlayerPosition] = True
+                    numFolds += 1
+                elif (bet[1] == 'r'):
+                    numRaises += 1
+                else:
+                    numChecks += 1
+                
+                # Move the betCounter over by one and move the actingPlayerPosition over by one
+                betCounter = betCounter + 1
+                numPositionsExamined += 1
+                actingPlayerPosition = (actingPlayerPosition + 1) % gameDefinition.numPlayers
+                
+                # The bettingRound is the number of times the bet has cirlced the table.
+                bettingRound = numPositionsExamined // numPlayers
+                
+        # If this is your valid turn to act then the number of people before you 
+        # should be:    
+        if (handRoundCounter == 0):
+            # pre-flop
+            # numberOfPeopleBeforeMe = (myPosition + numPlayers) - firstToActPosition 
+            #                           + bettingRound * numPlayers
+            expectedNumberOfPeopleBeforeMe = (myPosition + numPlayers) - gameDefinition.firstToAct[handRoundCounter] \
+            + bettingRound * numPlayers
+        else:
+            # post-flop
+            # numberOfPeopleBeforeMe = (myPosition + numPlayers) - firstToActPosition 
+            #                           + bettingRound * numPlayers
+            expectedNumberOfPeopleBeforeMe = (myPosition + 0) - gameDefinition.firstToAct[handRoundCounter] \
+            + bettingRound * numPlayers            
+            
+        actualNumberOfPeopleBeforeMe = numPositionsExamined
+        
+        if (expectedNumberOfPeopleBeforeMe != actualNumberOfPeopleBeforeMe):
+            return False    
+            
+    return True
     
