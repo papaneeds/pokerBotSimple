@@ -11,6 +11,7 @@ import preFlopOddsBot
 import os  
 import socket
 import sys
+import treys
 
 # main program starts here
 
@@ -66,6 +67,9 @@ for i in range (0, gameDefinition.numPlayers):
 #    in the historical list of values.
 print ('players[0].stackSize=', players[0].stackSize)
 
+# Create the hand evaluator that will tell you who won a hand
+handEvaluator = treys.Evaluator()
+
 # start communicating with the dealer
 HOST = sys.argv[2]   
 PORT = int(sys.argv[3]) 
@@ -110,7 +114,8 @@ while (cont == True):
         # dataString = 'MATCHSTATE:2:11:cr2863cc/:||8h7d/2s6sQd\r\nMATCHSTATE:2:11:cr2863cc/r15333:||8h7d/2s6sQd\r\nMATCHSTATE:2:11:cr2863cc/r15333r20000:||8h7d/2s6sQd\r\n'
         #dataString = 'MATCHSTATE:0:34:fcc/cc/c:3d5c||/Js7c4s/5h\r\nMATCHSTATE:0:34:fcc/cc/cr16908:3d5c||/Js7c4s/5h\r\n'
         #dataString = 'MATCHSTATE:1:0:r12797ff:|9hQd|MATCHSTATE:0:1::Ks6h||\r\nMATCHSTATE:0:1:r1485:Ks6h||\r\n'
-        dataString = 'MATCHSTATE:1:123:cr16943fc/cc/r17077r18184f:|4cQc|/Ts3c8s/Kc\r\nMATCHSTATE:0:124::3h4c||\r\nMATCHSTATE:0:124:c:3h4c||\r\n'
+        #dataString = 'MATCHSTATE:1:123:cr16943fc/cc/r17077r18184f:|4cQc|/Ts3c8s/Kc\r\nMATCHSTATE:0:124::3h4c||\r\nMATCHSTATE:0:124:c:3h4c||\r\n'
+        dataString = 'MATCHSTATE:1:0:r20000c///:5d5c|9hQd/8dAs8s/4h/6d\r\nMATCHSTATE:0:1::6sKs|\r\n'
         previousHandNumber = 92
 
     print('Received numBytes=', len(dataString), '\r\ndataString=', dataString)
@@ -136,22 +141,82 @@ while (cont == True):
          handRound, handNumber, firstToActThisRoundSeat, Error] \
          = gameUtilities.decode(lastActionInPreviousHand, 
                                 gameDefinition, players, False)
-
-        # Figure out who won the hand
-            
-                       
+         
+        mySeatNumber = gameUtilities.getSeatNumber(myPosition, previousHandNumber,
+                                                   gameUtilities.numPlayers)
+                                   
         # Save the historical values from this hand inside the player's
         # historical data
         historicalHandsFile.write('============================================\n')
         historicalHandsFile.write('Finished handNumber=' + str(previousHandNumber) + '\n')
         outputString = 'myPosition=' + str(myPosition) + '\n'
-        outputString = 'mySeatNumber=' + str(gameUtilities.getSeatNumber(myPosition, previousHandNumber, gameDefinition.numPlayers)) + '\n'
+        outputString = 'mySeatNumber=' + str(mySeatNumber) + '\n'
         #+ ' boardCards=' + boardCards + '\n'
+
+        print('myPosition=', str(myPosition))
+        print('mySeatNumber=' + str(mySeatNumber))
+        
+        # Figure out who won.
+        # If everyone folded but a single player then the non-folding player won
+        numFolded = 0
+        indexOfLastNonFoldedSeat = 0
+        for seatNumberCounter in range (0, gameDefinition.numPlayers):
+            if (players[seatNumberCounter].folded):
+                numFolded += 1
+            else:
+                indexOfLastNonFoldedSeat = seatNumberCounter
+        
+        if (numFolded == (gameDefinition.numPlayers - 1)):
+            if (indexOfLastNonFoldedSeat == mySeatNumber):
+                print(' I win because everyone else folded!)
+            else:
+                print(' Player in seat=', indexOfLastNonFoldedSeat, 
+                      ' wins because everyone else folded')
+        else:            
+            # Get each player's hand rank. You  use the hand rank to figure
+            # out who won the hand
+            
+            boardCardsAsString = ''
+            for i in (boardCards):
+                boardCardsAsString = boardCardsAsString + i
+                
+            cardHand = players[seatNumberCounter].holeCards + boardCardsAsString
+            #handRank = 
+            minHandScore = 100000  
+            indexOfMinHand = -1
+            minHandClass = 0
+            print('boardCards=', boardCardsAsString)
+            boardCardsAsTreys = gameUtilities.cardStringToTreysList(boardCardsAsString)
+            for seatNumberCounter in range (0, gameDefinition.numPlayers): 
+                print('player ', seatNumberCounter, 
+                      ' cards=', players[seatNumberCounter].holeCards)
+                [numCards, cardsAsList] = gameUtilities.cardStringToList(players[seatNumberCounter].holeCards)
+                myCards = gameUtilities.cardStringToTreysList(players[seatNumberCounter].holeCards)
+                
+                # Evaluate this hand
+                handScore = handEvaluator.evaluate(boardCardsAsTreys, myCards)
+                handClass = handEvaluator.get_rank_class(handScore)
+                print('player ', seatNumberCounter,
+                      ' hand score =', handScore, 
+                      '(', handEvaluator.class_to_string(handClass), ')')
+                if (handScore < minHandScore):
+                    minHandScore = handScore
+                    indexOfMinHand = seatNumberCounter
+                    minHandClass = handClass
+
+            if (indexOfMinHand == mySeatNumber): 
+                print(' I win with ', handEvaluator.class_to_string(minHandClass))
+            else:
+                print(' Player in seat=', indexOfMinHand, 
+                      ' wins with ', handEvaluator.class_to_string(minHandClass))
+
+        
         for seatNumberCounter in range (0, gameDefinition.numPlayers):
             players[seatNumberCounter].addCurrentHandToHistoricalInfo()
             historicalHandsFile.write('*******Data for player in seatNumber=' + str(seatNumberCounter) + ':\n')
             historicalHandsFile.write(players[seatNumberCounter].currentHandAsString())
 
+            # Reset the player's stack.
             # The computer poker competition plays by "Doyle's Rule", which is
             # that the stacks are reset after every hand
             players[seatNumberCounter].setStackSize(gameDefinition.startingStack[seatNumberCounter])

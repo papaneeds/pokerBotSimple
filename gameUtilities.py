@@ -7,6 +7,7 @@ Created on Sat Mar 31 17:42:39 2018
 """
 from enum import Enum
 import re
+import treys
 
 # Define an enum to hold the possible betting actions
 class BettingAction(Enum):
@@ -99,6 +100,38 @@ class GameDefinition(object):
         self.blinds = blinds   
         self.firstToAct = firstToAct
     
+# This function takes apart a string like this:
+# AsTd6h
+# into its constituent cards (as strings)
+#
+# Input:
+#   cardString : a string like 'AsTd6h4c'
+#
+# Output: 
+#   numCards : the number of cards in the string
+#   cardList : a list of the individual cards
+def cardStringToList(cardString):
+    numCards = len(cardString)//2
+    cardList = []
+    if (len(cardString)%2 != 0):
+        print('Error! cardString does not contain an even number of characters!')
+        return [0, cardList]
+    else:
+        for i in range(0, numCards):
+            card = cardString[2*i:2*i+2]
+            cardList.append(card)
+        
+    return(numCards, cardList)
+            
+# This function returns a cardString as a treys card hand
+def cardStringToTreysList(cardString):
+    [numCards, cardList] = cardStringToList(cardString)
+    treysList = []
+    for i in (cardList):
+        treysList.append(treys.Card.new(i))
+        
+    return(treysList)
+        
 
 # This function converts between position and seatNumber
 def getSeatNumber(position, handNumber, numPlayers):
