@@ -228,8 +228,6 @@ def lastAction(handState):
 # Parameters: 
 #     actionState : Input = a string that contains the action as sent to you by the poker server.
 #     ie 'MATCHSTATE:2:38:ccc/cr11052fc/cr17065c/cr18088r19194r20000f:||5d4d/9cTc8c/Kh/2c'
-#     
-#     foldedSeat : Input/Output - an array of players who folded. Values are seat positions
 # 
 #     gameDefintion : Input - the GameDefinition object
 # 
@@ -242,7 +240,7 @@ def lastAction(handState):
 #           i.e. whether the actionState that you got is consistent with your current 
 #                position.
 
-def decode(actionState, foldedSeat, gameDefinition, players, checkForPositionValidity):
+def decode(actionState, gameDefinition, players, checkForPositionValidity):
     print('Inside decode. actionState=', actionState)
     
     splitState = actionState.split(':')
@@ -324,6 +322,10 @@ def decode(actionState, foldedSeat, gameDefinition, players, checkForPositionVal
         for handRoundCounter in range (1, handRound+1):
             boardCards.insert(handRoundCounter, temp[handRoundCounter])
             
+    # Reset the values for this hand
+    for seatNumberCounter in range (0, gameDefinition.numPlayers):
+        players[seatNumberCounter].resetCurrentState()
+
     # assign each player their hole cards 
     for position in range (0, numPlayers):
         # Assign each player their cards
@@ -346,12 +348,7 @@ def decode(actionState, foldedSeat, gameDefinition, players, checkForPositionVal
     # (
     #  (\S) match a character
     #      (\d+)? match one or more optional digits
-    #            )
- 
-    # First, clear out the bets currently stored in the players
-    for seatNumber in range(0, gameDefinition.numPlayers):
-        players[seatNumber].bet = []
-        
+    #            )        
 
     # Cycle through all the bets for the various hand rounds
     for handRoundCounter in range(0, handRound+1):   
@@ -398,9 +395,9 @@ def decode(actionState, foldedSeat, gameDefinition, players, checkForPositionVal
                 # actingPlayerPosition until you hit a position that hasn't folded
                 #print('players[', actingPlayerSeat, '].folded=', players[actingPlayerSeat].folded)
                 while (players[actingPlayerSeat].folded):
-                    #print('actingPlayerPosition=', actingPlayerPosition, 
-                    #     ' actingPlayerSeat=', actingPlayerSeat, 
-                    #      ' has previously folded. Continuing to the next position')
+                #    print('actingPlayerPosition=', actingPlayerPosition, 
+                #         ' actingPlayerSeat=', actingPlayerSeat, 
+                #          ' has previously folded. Continuing to the next position')
                     actingPlayerPosition = (actingPlayerPosition + 1) % gameDefinition.numPlayers
                     actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
                                                      gameDefinition.numPlayers)
@@ -419,9 +416,6 @@ def decode(actionState, foldedSeat, gameDefinition, players, checkForPositionVal
                 if (bet[1] =='f'):
                     players[actingPlayerSeat].folded = True
                     players[actingPlayerSeat].foldedHandRound = handRoundCounter
-                    #print('Folded! Player in actingPlayerPosition=', actingPlayerPosition,
-                    #      ' actingPlayerSeat=', actingPlayerSeat, ' has folded')
-                    foldedSeat[actingPlayerSeat] = True
                 elif (bet[1] == 'r'):
                     # Decrease this player's stack size by the amount that they bet
                     players[actingPlayerSeat].stackSize = gameDefinition.startingStack[actingPlayerSeat] - int(bet[2])
@@ -454,15 +448,14 @@ def decode(actionState, foldedSeat, gameDefinition, players, checkForPositionVal
                                              gameDefinition.numPlayers)
         
         if (actingPlayerPosition != myPosition):
-            print('Everything is going to hell')
+            print('It is not my turn to act')
             return(myPosition, boardCards, actionState, handRound, handNumber, 
-                   firstToActThisRoundSeat, foldedSeat, True)
+                   firstToActThisRoundSeat, True)
         else:
-            print('Everything is okay')    
+            print('Everything is okay. It is my turn to act')    
             
     return(myPosition, boardCards, 
-           actionState, handRound, handNumber, firstToActThisRoundSeat, 
-           foldedSeat, False)
+           actionState, handRound, handNumber, firstToActThisRoundSeat, False)
 
 # Given an actionState, determine if it is your turn to act.
 def isItMyTurnToAct(actionState, gameDefinition, players):

@@ -84,12 +84,12 @@ class PreFlopOddsBot(object):
 #                if (not folded[seatNumber]):
 #                if ((not (players[seatNumber].folded)) or (len(players[seatNumber].bet[handRound]) == 0)):
                 if (not (players[seatNumber].folded)):
-                    print('Inside preFlopOddsBot. seatNumber=', seatNumber,
-                          ' folded[seatNumber]=', folded[seatNumber],
-                          ' handRound=', handRound,
-                          ' bettingRound=', bettingRound,
-                          'players[seatNumber].bet[handRound]=', players[seatNumber].bet[handRound],
-                          ' len(players[seatNumber].bet[handRound])=', len(players[seatNumber].bet[handRound]))
+                    #print('Inside preFlopOddsBot. seatNumber=', seatNumber,
+                    #      ' folded[seatNumber]=', folded[seatNumber],
+                    #      ' handRound=', handRound,
+                    #      ' bettingRound=', bettingRound,
+                    #      'players[seatNumber].bet[handRound]=', players[seatNumber].bet[handRound],
+                    #      ' len(players[seatNumber].bet[handRound])=', len(players[seatNumber].bet[handRound]))
                     currentBet = players[seatNumber].bet[handRound][bettingRound]
                     if (players[seatNumber].stackSize == 0):
                         # This player has gone all in. 
@@ -127,18 +127,30 @@ class PreFlopOddsBot(object):
             #If anyone before you bet and you were not going all in then fold
             if (someoneRaised & (allIn == False)):
                 bettingAction = 'f'
+                print('Inside preFlopOddsBot. probability=', probability, 
+                      ' threshold=', self.threshold, 
+                      ' Someone raised before me and I was not planning on going all in. Returning=', bettingAction)
             # If someone went all in before you and you were planning on
             # going all in then call
             elif (someoneWentAllIn & allIn):
                 bettingAction = 'c'
+                print('Inside preFlopOddsBot. probability=', probability, 
+                      ' threshold=', self.threshold, 
+                      ' Someone went all in before me and I was planning on going all in. Returning=', bettingAction)
             # If no one raised before you then just call
             # (even if you were not planning on going all in). You basically
             # get free cards
             elif ((not someoneRaised) & (not allIn)):
                 bettingAction = 'c'
+                print('Inside preFlopOddsBot. probability=', probability, 
+                      ' threshold=', self.threshold, 
+                      ' Nobody raised before me and I was not planning on going all in. I get a free card. Returning=', bettingAction)                
             else:
                 # Go all in
-                bettingAction = 'r' + str(players[mySeatNumber].stackSize)       
+                bettingAction = 'r' + str(players[mySeatNumber].stackSize)
+                print('Inside preFlopOddsBot. probability=', probability, 
+                      ' threshold=', self.threshold, 
+                      ' Nobody raised before me and I was not planning on going all in. I get a free card. Returning=', bettingAction)
                
         return bettingAction
             
