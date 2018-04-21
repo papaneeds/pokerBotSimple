@@ -16,7 +16,7 @@ import treys
 # main program starts here
 
 # Turning socketComms = False allows you to define input strings for debugging
-socketComms = True
+socketComms = False
 
 print ('Number of arguments:', len(sys.argv), 'arguments.')
 print ('Argument List:', str(sys.argv))
@@ -96,7 +96,7 @@ while (cont == True):
         dataIn = s.recv(4096)
         dataString = dataIn.decode('utf-8')
         if (len(dataString) == 0):
-            print(' Received zero length dataString from socked. Game is over')
+            print(' Received zero length dataString from socket. Game is over')
             break
     else:
         # example for debugging dataString='MATCHSTATE:0:1:r11189cc/:Ks6h||/Ah3dTd'
@@ -115,8 +115,9 @@ while (cont == True):
         #dataString = 'MATCHSTATE:0:34:fcc/cc/c:3d5c||/Js7c4s/5h\r\nMATCHSTATE:0:34:fcc/cc/cr16908:3d5c||/Js7c4s/5h\r\n'
         #dataString = 'MATCHSTATE:1:0:r12797ff:|9hQd|MATCHSTATE:0:1::Ks6h||\r\nMATCHSTATE:0:1:r1485:Ks6h||\r\n'
         #dataString = 'MATCHSTATE:1:123:cr16943fc/cc/r17077r18184f:|4cQc|/Ts3c8s/Kc\r\nMATCHSTATE:0:124::3h4c||\r\nMATCHSTATE:0:124:c:3h4c||\r\n'
-        dataString = 'MATCHSTATE:1:0:r20000c///:5d5c|9hQd/8dAs8s/4h/6d\r\nMATCHSTATE:0:1::6sKs|\r\n'
-        previousHandNumber = 92
+        #dataString = 'MATCHSTATE:1:0:r20000c///:5d5c|9hQd/8dAs8s/4h/6d\r\nMATCHSTATE:0:1::6sKs|\r\n'
+        dataString = 'MATCHSTATE:1:0:cfc/cc/cr2376f:|9hQd|/8s4h6d/5s\r\nMATCHSTATE:0:1::Ks6h||\r\n'
+        previousHandNumber = 0
 
     print('Received numBytes=', len(dataString), '\r\ndataString=', dataString)
     handString = handString + dataString
@@ -133,7 +134,6 @@ while (cont == True):
         print('There is a new hand. previousHandNumber=', previousHandNumber,
               ' currentHandNumber=', handNumber, 
               ' lastActionInPreviousHand=', lastActionInPreviousHand)
-        previousHandNumber = handNumber
         
         # decode anything that happened in the last hand
         print('Decoding lastActionInPreviousHand')
@@ -141,9 +141,14 @@ while (cont == True):
          handRound, handNumber, firstToActThisRoundSeat, Error] \
          = gameUtilities.decode(lastActionInPreviousHand, 
                                 gameDefinition, players, False)
-         
+        print('Finished decoding lastActionInPreviousHand')
+       
         mySeatNumber = gameUtilities.getSeatNumber(myPosition, previousHandNumber,
-                                                   gameUtilities.numPlayers)
+                                                   gameDefinition.numPlayers)
+        print('mySeatNumber=', mySeatNumber,
+              'myPosition=', myPosition, 
+              ' previousHandNumber=', previousHandNumber,
+              'numPlayers=', gameUtilities.GameDefinition.numPlayers)  
                                    
         # Save the historical values from this hand inside the player's
         # historical data
@@ -168,7 +173,7 @@ while (cont == True):
         
         if (numFolded == (gameDefinition.numPlayers - 1)):
             if (indexOfLastNonFoldedSeat == mySeatNumber):
-                print(' I win because everyone else folded!)
+                print(' I win because everyone else folded!')
             else:
                 print(' Player in seat=', indexOfLastNonFoldedSeat, 
                       ' wins because everyone else folded')
@@ -180,35 +185,46 @@ while (cont == True):
             for i in (boardCards):
                 boardCardsAsString = boardCardsAsString + i
                 
-            cardHand = players[seatNumberCounter].holeCards + boardCardsAsString
-            #handRank = 
-            minHandScore = 100000  
-            indexOfMinHand = -1
-            minHandClass = 0
+#            cardHand = players[seatNumberCounter].holeCards + boardCardsAsString
+#            #handRank = 
+#            minHandScore = 100000  
+#            indexOfMinHand = -1
+#            minHandClass = 0
             print('boardCards=', boardCardsAsString)
             boardCardsAsTreys = gameUtilities.cardStringToTreysList(boardCardsAsString)
+            playerCards = [[]] * gameDefinition.numPlayers
+            
             for seatNumberCounter in range (0, gameDefinition.numPlayers): 
                 print('player ', seatNumberCounter, 
                       ' cards=', players[seatNumberCounter].holeCards)
                 [numCards, cardsAsList] = gameUtilities.cardStringToList(players[seatNumberCounter].holeCards)
-                myCards = gameUtilities.cardStringToTreysList(players[seatNumberCounter].holeCards)
+                playerCards[seatNumberCounter] = gameUtilities.cardStringToTreysList(players[seatNumberCounter].holeCards)
                 
-                # Evaluate this hand
-                handScore = handEvaluator.evaluate(boardCardsAsTreys, myCards)
-                handClass = handEvaluator.get_rank_class(handScore)
-                print('player ', seatNumberCounter,
-                      ' hand score =', handScore, 
-                      '(', handEvaluator.class_to_string(handClass), ')')
-                if (handScore < minHandScore):
-                    minHandScore = handScore
-                    indexOfMinHand = seatNumberCounter
-                    minHandClass = handClass
-
-            if (indexOfMinHand == mySeatNumber): 
-                print(' I win with ', handEvaluator.class_to_string(minHandClass))
-            else:
-                print(' Player in seat=', indexOfMinHand, 
-                      ' wins with ', handEvaluator.class_to_string(minHandClass))
+            # Evaluate this hand
+            winner = [0] * gameDefinition.numPlayers
+            numTies = gameUtilities.findWinners(True, handEvaluator, 
+                                                    gameDefinition.numPlayers, 
+                                                    playerCards, boardCardsAsTreys, winner)
+        # Now, divvy up the pot
+            
+        # And finally reset the prevousHandNumber
+        previousHandNumber = handNumber
+                
+#                handScore = handEvaluator.evaluate(boardCardsAsTreys, myCards)
+#                handClass = handEvaluator.get_rank_class(handScore)
+#                print('player ', seatNumberCounter,
+#                      ' hand score =', handScore, 
+#                      '(', handEvaluator.class_to_string(handClass), ')')
+#                if (handScore < minHandScore):
+#                    minHandScore = handScore
+#                    indexOfMinHand = seatNumberCounter
+#                    minHandClass = handClass
+#
+#            if (indexOfMinHand == mySeatNumber): 
+#                print(' I win with ', handEvaluator.class_to_string(minHandClass))
+#            else:
+#                print(' Player in seat=', indexOfMinHand, 
+#                      ' wins with ', handEvaluator.class_to_string(minHandClass))
 
         
         for seatNumberCounter in range (0, gameDefinition.numPlayers):

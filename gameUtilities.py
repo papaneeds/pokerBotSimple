@@ -6,7 +6,9 @@ Created on Sat Mar 31 17:42:39 2018
 @author: tompokerlinux
 """
 from enum import Enum
+
 import re
+import operator
 import treys
 
 # Define an enum to hold the possible betting actions
@@ -620,4 +622,86 @@ def isItMyTurnToAct(actionState, gameDefinition, players):
             return False    
             
     return True
+
+# This function finds the winner out of a set of numPlayers hands.
+# debug: input: True | False. If True prints out debugging info
+# evaluator: input: The hand evaluator from the Treys package
+# numPlayers: input: the number of players (and hands)
+# hands: input: The list of hands that the players hold
+# boardCards: input: the boardCards (as a list)
+# winner: input/output. On input this is an array of floats winner = [0] * numPlayers
+#                       On output this contains the winner of the hand (a 1 in the winner position)
+#                         If there is an N-way tie then winner there is a 1/N in each tie position
+#
+# Returns: numTies: The number of ties
+#
+def findWinners(debug, evaluator, numPlayers, hands, boardCards, winner):
+    # Now, figure out who has the best hand
+    rankedHands = {}
+    for i in range(0, numPlayers):
+        if (len(hands[i]) == 2):
+            if (debug):
+                print("Player %d cards=" % (i))
+                treys.Card.print_pretty_cards(hands[i])
+            rank_score = evaluator.evaluate(hands[i], boardCards)
+            rank_class = evaluator.get_rank_class(rank_score)
+            if (debug):
+                print("Player %d hand rank = %d (%s)\n" % (i, rank_score, evaluator.class_to_string(rank_class)))
+            rankedHands[i]=rank_score
+        else:
+            # This player folded or there are the wrong number of cards in 
+            # his hand. Either way,
+            # set the hand rank to the lowest possible rank.
+            # There are 7462 possible hand ranks in poker. Set it to lower
+            # than the lowest possible hand rank.
+            rank_score = 7462 + 1
+            rankedHands[i]=  rank_score 
+            if (debug):
+                print("Player %d either folded or did not have valid cards. setting hand rank = %d\n" % 
+                      (i, rank_score))
+              
+    # Now, sort the rankedHands based on rank score
+    sortedRankedHands = sorted(rankedHands.items(), 
+                               key=operator.itemgetter(1))
+                        
+    # Print out who won
+    if (debug):
+        print("Player=", sortedRankedHands[0][0], " wins")
+                            
+    # There could be a tie amongst one or more players. In that
+    # case they all get a win
+    tie = False  
+    numTies = 0
+    for i in range(1, numPlayers):
+        if (sortedRankedHands[i][1] == sortedRankedHands[0][1]):
+            # we have a tie
+            winner[sortedRankedHands[i][0]] += 1 
+            tie = True
+            numTies += 1
+                    
+    if(numTies > 0):
+        if (debug):
+            print('We have a ', numTies + 1, ' way tie! sortedRankedHands=', sortedRankedHands)
+                            
+    if (debug):
+        if (tie):        
+            print("Board cards=")
+            treys.Card.print_pretty_cards(boardCards)
+            for i in range(0, numPlayers):
+                print("Player %d cards=" % (i))
+                treys.Card.print_pretty_cards(hands[i]) 
+                rank_score = evaluator.evaluate(hands[i], boardCards)
+                rank_class = evaluator.get_rank_class(rank_score)
+                print("Player %d hand rank = %d (%s)\n" % (i, rank_score, evaluator.class_to_string(rank_class)))              
+        
+    # and finally, place a win in the bin of the winning player(s)
+    # In the case of one or more ties split the pot equally amongst the
+    # players who tied
+    splitPotFactor = 1.0/(numTies + 1.0)   
+
+    winner[sortedRankedHands[0][0]] += splitPotFactor
+    for i in range(1, numTies+1):
+        winner[sortedRankedHands[i][0]] += splitPotFactor      
+    
+    return numTies
     
