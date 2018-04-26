@@ -204,10 +204,10 @@ def getHandNumber(handState):
     
     # The handState that we need to react to is in the last element 
     actionState = actionStates[len(actionStates)-2]
-    #print('actionState=', actionState)
+    print('actionState=', actionState)
     
     splitState = actionState.split(':')
-    #print('splitState=', splitState)
+    print('splitState=', splitState)
     
     handNumber   = int(splitState[2])
 
@@ -675,7 +675,6 @@ def findWinners(debug, evaluator, numPlayers, hands, boardCards, winner):
     for i in range(1, numPlayers):
         if (sortedRankedHands[i][1] == sortedRankedHands[0][1]):
             # we have a tie
-            winner[sortedRankedHands[i][0]] += 1 
             tie = True
             numTies += 1
                     

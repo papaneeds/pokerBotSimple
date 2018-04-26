@@ -16,7 +16,7 @@ import treys
 # main program starts here
 
 # Turning socketComms = False allows you to define input strings for debugging
-socketComms = False
+socketComms = True
 
 print ('Number of arguments:', len(sys.argv), 'arguments.')
 print ('Argument List:', str(sys.argv))
@@ -79,8 +79,6 @@ if (socketComms):
     versionString = "VERSION:2.0.0\r\n"
     s.send(versionString.encode('utf-8'))
    
-#firstHandNumber = -1
-#previousHandNumber = firstHandNumber
 previousHandNumber = -1
     
 cont= True
@@ -125,10 +123,10 @@ while (cont == True):
 
     handNumber = gameUtilities.getHandNumber(handString)
     print('handNumber =', handNumber, ' previousHandNumber=', previousHandNumber)
-    
+        
     # If the hand has incremented then reset the variables that are used
     # to keep track of this hand
-    if ((previousHandNumber != handNumber) & (handNumber > 0)):        
+    if ((previousHandNumber+1 != handNumber) & (handNumber > 0)):        
         lastActionInPreviousHand = gameUtilities.lastActionInPreviousHand(handString)
         print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
         print('There is a new hand. previousHandNumber=', previousHandNumber,
@@ -138,15 +136,15 @@ while (cont == True):
         # decode anything that happened in the last hand
         print('Decoding lastActionInPreviousHand')
         [myPosition, boardCards, actionState, \
-         handRound, handNumber, firstToActThisRoundSeat, Error] \
+         handRound, previousHandNumber, firstToActThisRoundSeat, Error] \
          = gameUtilities.decode(lastActionInPreviousHand, 
                                 gameDefinition, players, False)
         print('Finished decoding lastActionInPreviousHand')
        
         mySeatNumber = gameUtilities.getSeatNumber(myPosition, previousHandNumber,
                                                    gameDefinition.numPlayers)
-        print('mySeatNumber=', mySeatNumber,
-              'myPosition=', myPosition, 
+        print('For the previous hand mySeatNumber=', mySeatNumber,
+              ' myPosition=', myPosition, 
               ' previousHandNumber=', previousHandNumber,
               'numPlayers=', gameUtilities.GameDefinition.numPlayers)  
                                    
@@ -165,6 +163,8 @@ while (cont == True):
         # If everyone folded but a single player then the non-folding player won
         numFolded = 0
         indexOfLastNonFoldedSeat = 0
+        winner = [0] * gameDefinition.numPlayers
+        
         for seatNumberCounter in range (0, gameDefinition.numPlayers):
             if (players[seatNumberCounter].folded):
                 numFolded += 1
@@ -174,9 +174,11 @@ while (cont == True):
         if (numFolded == (gameDefinition.numPlayers - 1)):
             if (indexOfLastNonFoldedSeat == mySeatNumber):
                 print(' I win because everyone else folded!')
+                winner[mySeatNumber] = 1
             else:
                 print(' Player in seat=', indexOfLastNonFoldedSeat, 
                       ' wins because everyone else folded')
+                winner[indexOfLastNonFoldedSeat] = 1
         else:            
             # Get each player's hand rank. You  use the hand rank to figure
             # out who won the hand
@@ -201,14 +203,15 @@ while (cont == True):
                 playerCards[seatNumberCounter] = gameUtilities.cardStringToTreysList(players[seatNumberCounter].holeCards)
                 
             # Evaluate this hand
-            winner = [0] * gameDefinition.numPlayers
             numTies = gameUtilities.findWinners(True, handEvaluator, 
                                                     gameDefinition.numPlayers, 
                                                     playerCards, boardCardsAsTreys, winner)
         # Now, divvy up the pot
+        for seatNumber in range(0, len(winner)):
+            print('seatNumber ', seatNumber, ' wins ', winner[seatNumber]*100, ' percent of the pot')
+#        xxxx here is where you divvy up the pot. You will also need to go into the 
+#        decode method and properly set the stack sizes for the players after they bet.
             
-        # And finally reset the prevousHandNumber
-        previousHandNumber = handNumber
                 
 #                handScore = handEvaluator.evaluate(boardCardsAsTreys, myCards)
 #                handClass = handEvaluator.get_rank_class(handScore)
@@ -238,7 +241,6 @@ while (cont == True):
             players[seatNumberCounter].setStackSize(gameDefinition.startingStack[seatNumberCounter])
         
         handString = gameUtilities.lastAction(handString) + '\r\n'
-        
 
     # Reset the values for this hand
     for seatNumberCounter in range (0, gameDefinition.numPlayers):
