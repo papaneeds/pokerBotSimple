@@ -114,8 +114,9 @@ while (cont == True):
         #dataString = 'MATCHSTATE:1:0:r12797ff:|9hQd|MATCHSTATE:0:1::Ks6h||\r\nMATCHSTATE:0:1:r1485:Ks6h||\r\n'
         #dataString = 'MATCHSTATE:1:123:cr16943fc/cc/r17077r18184f:|4cQc|/Ts3c8s/Kc\r\nMATCHSTATE:0:124::3h4c||\r\nMATCHSTATE:0:124:c:3h4c||\r\n'
         #dataString = 'MATCHSTATE:1:0:r20000c///:5d5c|9hQd/8dAs8s/4h/6d\r\nMATCHSTATE:0:1::6sKs|\r\n'
-        dataString = 'MATCHSTATE:1:0:cfc/cc/cr2376f:|9hQd|/8s4h6d/5s\r\nMATCHSTATE:0:1::Ks6h||\r\n'
-        previousHandNumber = 0
+        #dataString = 'MATCHSTATE:1:0:cfc/cc/cr2376f:|9hQd|/8s4h6d/5s\r\nMATCHSTATE:0:1::Ks6h||\r\n'
+        dataString ='MATCHSTATE:2:257:cr17261cf/r18594r19956r20000:||7h6s/4s6c3s\r\nMATCHSTATE:2:257:cr17261cf/r18594r19956r20000c//:2dAs|2c5c|7h6s/4s6c3s/Qc/5h\r\nMATCHSTATE:1:258::|7sQh|\r\nMATCHSTATE:1:258:f:|7sQh|\r\nMATCHSTATE:1:258:ff:|7sQh|\r\nMATCHSTATE:0:259::Kh4s||\r\nMATCHSTATE:0:259:c:Kh4s||\r\n'
+        previousHandNumber = 256
 
     print('Received numBytes=', len(dataString), '\r\ndataString=', dataString)
     handString = handString + dataString
@@ -127,120 +128,100 @@ while (cont == True):
     # If the hand has incremented then reset the variables that are used
     # to keep track of this hand
     if ((previousHandNumber+1 != handNumber) & (handNumber > 0)):        
-        lastActionInPreviousHand = gameUtilities.lastActionInPreviousHand(handString)
-        print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-        print('There is a new hand. previousHandNumber=', previousHandNumber,
-              ' currentHandNumber=', handNumber, 
-              ' lastActionInPreviousHand=', lastActionInPreviousHand)
+
+        #lastActionInPreviousHand = gameUtilities.lastActionInPreviousHand(handString)
+        lastActionInPreviousHands = gameUtilities.lastActionInPreviousHands(handString)
         
-        # decode anything that happened in the last hand
-        print('Decoding lastActionInPreviousHand')
-        [myPosition, boardCards, actionState, \
-         handRound, previousHandNumber, firstToActThisRoundSeat, Error] \
-         = gameUtilities.decode(lastActionInPreviousHand, 
-                                gameDefinition, players, False)
-        print('Finished decoding lastActionInPreviousHand')
+        for lastActionInPreviousHand in lastActionInPreviousHands:
+        
+            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            print('There is a new hand. previousHandNumber=', previousHandNumber,
+                  ' currentHandNumber=', handNumber, 
+                  ' lastActionInPreviousHand=', lastActionInPreviousHand)
+        
+            # decode anything that happened in the last hand
+            print('Decoding lastActionInPreviousHand')
+            [myPosition, boardCards, actionState, \
+             handRound, previousHandNumber, firstToActThisRoundSeat, Error] \
+             = gameUtilities.decode(lastActionInPreviousHand, 
+                                    gameDefinition, players, False)
+            print('Finished decoding lastActionInPreviousHand')
        
-        mySeatNumber = gameUtilities.getSeatNumber(myPosition, previousHandNumber,
-                                                   gameDefinition.numPlayers)
-        print('For the previous hand mySeatNumber=', mySeatNumber,
-              ' myPosition=', myPosition, 
-              ' previousHandNumber=', previousHandNumber,
-              'numPlayers=', gameUtilities.GameDefinition.numPlayers)  
+            mySeatNumber = gameUtilities.getSeatNumber(myPosition, previousHandNumber,
+                                                       gameDefinition.numPlayers)
+            print('For the previous hand mySeatNumber=', mySeatNumber,
+                  ' myPosition=', myPosition, 
+                  ' previousHandNumber=', previousHandNumber,
+                  'numPlayers=', gameUtilities.GameDefinition.numPlayers)  
                                    
-        # Save the historical values from this hand inside the player's
-        # historical data
-        historicalHandsFile.write('============================================\n')
-        historicalHandsFile.write('Finished handNumber=' + str(previousHandNumber) + '\n')
-        outputString = 'myPosition=' + str(myPosition) + '\n'
-        outputString = 'mySeatNumber=' + str(mySeatNumber) + '\n'
-        #+ ' boardCards=' + boardCards + '\n'
+            # Save the historical values from this hand inside the player's
+            # historical data
+            historicalHandsFile.write('============================================\n')
+            historicalHandsFile.write('Finished handNumber=' + str(previousHandNumber) + '\n')
+            outputString = 'myPosition=' + str(myPosition) + '\n'
+            outputString = 'mySeatNumber=' + str(mySeatNumber) + '\n'
+            #+ ' boardCards=' + boardCards + '\n'
 
-        print('myPosition=', str(myPosition))
-        print('mySeatNumber=' + str(mySeatNumber))
+            print('myPosition=', str(myPosition))
+            print('mySeatNumber=' + str(mySeatNumber))
         
-        # Figure out who won.
-        # If everyone folded but a single player then the non-folding player won
-        numFolded = 0
-        indexOfLastNonFoldedSeat = 0
-        winner = [0] * gameDefinition.numPlayers
+            # Figure out who won.
+            # If everyone folded but a single player then the non-folding player won
+            numFolded = 0
+            indexOfLastNonFoldedSeat = 0
+            winner = [0] * gameDefinition.numPlayers
         
-        for seatNumberCounter in range (0, gameDefinition.numPlayers):
-            if (players[seatNumberCounter].folded):
-                numFolded += 1
-            else:
-                indexOfLastNonFoldedSeat = seatNumberCounter
+            for seatNumberCounter in range (0, gameDefinition.numPlayers):
+                if (players[seatNumberCounter].folded):
+                    numFolded += 1
+                else:
+                    indexOfLastNonFoldedSeat = seatNumberCounter
         
-        if (numFolded == (gameDefinition.numPlayers - 1)):
-            if (indexOfLastNonFoldedSeat == mySeatNumber):
-                print(' I win because everyone else folded!')
-                winner[mySeatNumber] = 1
-            else:
-                print(' Player in seat=', indexOfLastNonFoldedSeat, 
-                      ' wins because everyone else folded')
-                winner[indexOfLastNonFoldedSeat] = 1
-        else:            
-            # Get each player's hand rank. You  use the hand rank to figure
-            # out who won the hand
+            if (numFolded == (gameDefinition.numPlayers - 1)):
+                if (indexOfLastNonFoldedSeat == mySeatNumber):
+                    print(' I win because everyone else folded!')
+                    winner[mySeatNumber] = 1
+                else:
+                    print(' Player in seat=', indexOfLastNonFoldedSeat, 
+                          ' wins because everyone else folded')
+                    winner[indexOfLastNonFoldedSeat] = 1
+            else:            
+                # Get each player's hand rank. You  use the hand rank to figure
+                # out who won the hand
             
-            boardCardsAsString = ''
-            for i in (boardCards):
-                boardCardsAsString = boardCardsAsString + i
+                boardCardsAsString = ''
+                for i in (boardCards):
+                    boardCardsAsString = boardCardsAsString + i
                 
-#            cardHand = players[seatNumberCounter].holeCards + boardCardsAsString
-#            #handRank = 
-#            minHandScore = 100000  
-#            indexOfMinHand = -1
-#            minHandClass = 0
-            print('boardCards=', boardCardsAsString)
-            boardCardsAsTreys = gameUtilities.cardStringToTreysList(boardCardsAsString)
-            playerCards = [[]] * gameDefinition.numPlayers
+                print('boardCards=', boardCardsAsString)
+                boardCardsAsTreys = gameUtilities.cardStringToTreysList(boardCardsAsString)
+                playerCards = [[]] * gameDefinition.numPlayers
             
-            for seatNumberCounter in range (0, gameDefinition.numPlayers): 
-                print('player ', seatNumberCounter, 
-                      ' cards=', players[seatNumberCounter].holeCards)
-                [numCards, cardsAsList] = gameUtilities.cardStringToList(players[seatNumberCounter].holeCards)
-                playerCards[seatNumberCounter] = gameUtilities.cardStringToTreysList(players[seatNumberCounter].holeCards)
+                for seatNumberCounter in range (0, gameDefinition.numPlayers): 
+                    print('player ', seatNumberCounter, 
+                          ' cards=', players[seatNumberCounter].holeCards)
+                    [numCards, cardsAsList] = gameUtilities.cardStringToList(players[seatNumberCounter].holeCards)
+                    playerCards[seatNumberCounter] = gameUtilities.cardStringToTreysList(players[seatNumberCounter].holeCards)
                 
-            # Evaluate this hand
-            numTies = gameUtilities.findWinners(True, handEvaluator, 
-                                                    gameDefinition.numPlayers, 
-                                                    playerCards, boardCardsAsTreys, winner)
-        # Now, divvy up the pot
-        for seatNumber in range(0, len(winner)):
-            print('seatNumber ', seatNumber, ' wins ', winner[seatNumber]*100, ' percent of the pot')
-#        xxxx here is where you divvy up the pot. You will also need to go into the 
-#        decode method and properly set the stack sizes for the players after they bet.
-            
-                
-#                handScore = handEvaluator.evaluate(boardCardsAsTreys, myCards)
-#                handClass = handEvaluator.get_rank_class(handScore)
-#                print('player ', seatNumberCounter,
-#                      ' hand score =', handScore, 
-#                      '(', handEvaluator.class_to_string(handClass), ')')
-#                if (handScore < minHandScore):
-#                    minHandScore = handScore
-#                    indexOfMinHand = seatNumberCounter
-#                    minHandClass = handClass
-#
-#            if (indexOfMinHand == mySeatNumber): 
-#                print(' I win with ', handEvaluator.class_to_string(minHandClass))
-#            else:
-#                print(' Player in seat=', indexOfMinHand, 
-#                      ' wins with ', handEvaluator.class_to_string(minHandClass))
+                # Evaluate this hand
+                numTies = gameUtilities.findWinners(True, handEvaluator, 
+                                                        gameDefinition.numPlayers, 
+                                                        playerCards, boardCardsAsTreys, winner)
+            # Now, divvy up the pot
+            for seatNumber in range(0, len(winner)):
+                print('seatNumber ', seatNumber, ' wins ', winner[seatNumber]*100, ' percent of the pot')
+        
+            for seatNumberCounter in range (0, gameDefinition.numPlayers):
+                players[seatNumberCounter].addCurrentHandToHistoricalInfo()
+                historicalHandsFile.write('*******Data for player in seatNumber=' + str(seatNumberCounter) + ':\n')
+                historicalHandsFile.write(players[seatNumberCounter].currentHandAsString())
 
+                # Reset the player's stack.
+                # The computer poker competition plays by "Doyle's Rule", which is
+                # that the stacks are reset after every hand
+                players[seatNumberCounter].setStackSize(gameDefinition.startingStack[seatNumberCounter])
         
-        for seatNumberCounter in range (0, gameDefinition.numPlayers):
-            players[seatNumberCounter].addCurrentHandToHistoricalInfo()
-            historicalHandsFile.write('*******Data for player in seatNumber=' + str(seatNumberCounter) + ':\n')
-            historicalHandsFile.write(players[seatNumberCounter].currentHandAsString())
-
-            # Reset the player's stack.
-            # The computer poker competition plays by "Doyle's Rule", which is
-            # that the stacks are reset after every hand
-            players[seatNumberCounter].setStackSize(gameDefinition.startingStack[seatNumberCounter])
-        
-        handString = gameUtilities.lastAction(handString) + '\r\n'
+            handString = gameUtilities.lastAction(handString) + '\r\n'
 
     # Reset the values for this hand
     for seatNumberCounter in range (0, gameDefinition.numPlayers):

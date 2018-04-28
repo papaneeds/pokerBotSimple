@@ -212,22 +212,31 @@ def getHandNumber(handState):
     handNumber   = int(splitState[2])
 
     return handNumber
-    
-# This function returns the last action in the previous hand
+
+# This function returns a list of the past last actions in previous hands.
+# The reason it is a list is because in the handState there may have been
+# a previous hand where everyone folded to you and the dealer never sent you
+# that hand (because it didn't require any action on your part).
+# An example of such a hand is shown below in hand 258. 
 # It assumes a handState like:
-# MATCHSTATE:1:0:r11374r20000f:|9hQd|
-# MATCHSTATE:1:0:r11374r20000fc///:5d5c|9hQd|8dAs/8s4h6d/5s/Js
-# MATCHSTATE:0:1::Ks6h||
-# MATCHSTATE:0:1:c:Ks6h||   
-def lastActionInPreviousHand(handState):
+# MATCHSTATE:2:257:cr17261cf/r18594r19956r20000:||7h6s/4s6c3s\r\n
+# MATCHSTATE:2:257:cr17261cf/r18594r19956r20000c//:2dAs|2c5c|7h6s/4s6c3s/Qc/5h\r\n
+# MATCHSTATE:1:258::|7sQh|\r\n
+# MATCHSTATE:1:258:f:|7sQh|\r\n
+# MATCHSTATE:1:258:ff:|7sQh|\r\n\
+# MATCHSTATE:0:259::Kh4s||\r\n
+# MATCHSTATE:0:259:c:Kh4s||\r\n
+def lastActionInPreviousHands(handState):
     #print('Inside lastActionInPreviousHand. handState=', handState) 
      
     # First, split the action along '\r\n'
     actionStates = handState.split('\r\n')
     
+    lastHands = list()
+    
     # Now, cycle through the handState until  you find the boundary
     # between hand numbers
-    for i in range (0, len(actionStates)-1):
+    for i in range (0, len(actionStates)-2):
 #        print('In lastActionInPreviousHand. i=', i)
 #        print('actionStates[i]=', actionStates[i])
 #        print('actionStates[i].split(:)=', actionStates[i].split(':'))
@@ -235,10 +244,9 @@ def lastActionInPreviousHand(handState):
         nextHandNumber    = int(actionStates[i+1].split(':')[2])
          
         if (currentHandNumber != nextHandNumber):
-            return actionStates[i]
-         
-    return 'Error! The boundary between handNumbers was not found!'
+            lastHands.append(actionStates[i])
      
+    return lastHands
 
 # This function returns the last action in a handState
 def lastAction(handState):
