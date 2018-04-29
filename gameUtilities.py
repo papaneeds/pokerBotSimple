@@ -27,6 +27,7 @@ class Player(object):
         self.handStartingStackSize = self.startingStackSize
         self.stackSize = self.startingStackSize
         self.blind = 0
+        self.position = 0
    
         # These variables hold the historical values for each hand played
         # They are indexed by hand
@@ -54,19 +55,19 @@ class Player(object):
         
     # Pay the blinds for this hand
     def payBlindsAndAntes(self, handNumber, gameDefinition):
-        # This is a new hand. See if you have to pay a blind or not
-        position = getPosition(self.seatNumber, handNumber, gameDefinition.numPlayers)
-        if (position == 0):
+        self.position = getPosition(self.seatNumber, handNumber, gameDefinition.numPlayers)
+        if (self.position == 0):
             # Pay the small blind
             self.stackSize -= gameDefinition.blinds[0]
             self.blind = gameDefinition.blinds[0]
-        elif (position == 1):
+        elif (self.position == 1):
             # Pay the big blind
             self.stackSize -= gameDefinition.blinds[1]
             self.blind = gameDefinition.blinds[1]
         else:
             # Pay the ante
             self.stackSize -= gameDefinition.blinds[2]
+            self.blind = gameDefinition.blinds[2]
         
         # You can't have negative money!
         if (self.stackSize < 0):
@@ -105,6 +106,11 @@ class Player(object):
         outputString += delimiter
         outputString += 'folded=' + str(self.folded) + delimiter
         outputString += 'foldedHandRound=' + str(self.foldedHandRound) + delimiter
+        outputString += 'startingStackSize=' + str(self.startingStackSize) + delimiter
+        outputString += 'handStartingStackSize=' + str(self.handStartingStackSize) + delimiter
+        outputString += 'position=' + str(self.position) + delimiter
+        outputString += 'blind=' + str(self.blind) + delimiter
+        outputString += 'stackSize=' + str(self.stackSize) + delimiter
         return outputString
         
 
@@ -256,10 +262,10 @@ def getHandNumber(handState):
     
     # The handState that we need to react to is in the last element 
     actionState = actionStates[len(actionStates)-2]
-    print('actionState=', actionState)
+    #print('actionState=', actionState)
     
     splitState = actionState.split(':')
-    print('splitState=', splitState)
+    #print('splitState=', splitState)
     
     handNumber   = int(splitState[2])
 
