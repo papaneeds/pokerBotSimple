@@ -16,7 +16,7 @@ import treys
 # main program starts here
 
 # Turning socketComms = False allows you to define input strings for debugging
-socketComms = True
+socketComms = False
 
 print ('Number of arguments:', len(sys.argv), 'arguments.')
 print ('Argument List:', str(sys.argv))
@@ -59,13 +59,18 @@ players = list()
 for i in range (0, gameDefinition.numPlayers):
     print("Inside main. creating player=", i, 
           'startingStack=', gameDefinition.startingStack[i])
-    players.insert(i, gameUtilities.Player(i, gameDefinition.startingStack[i]))
+    # Start at handNumber = 0
+    players.insert(i, gameUtilities.Player(i, gameDefinition, 0))
     print('players[',i,'].stackSize=', players[i].stackSize)
     
 #    Once you've got that sorted out then move on to the end of hand
 #    play and how you store the values of the current hand (cards, bet, stack)
 #    in the historical list of values.
 print ('players[0].stackSize=', players[0].stackSize)
+
+# Create a list to hold the player winnings (needed for the ACPC because the player's
+# stacks are reset after every hand)
+playerCumulativeWinnings = [0] * gameDefinition.numPlayers
 
 # Create the hand evaluator that will tell you who won a hand
 handEvaluator = treys.Evaluator()
@@ -115,8 +120,10 @@ while (cont == True):
         #dataString = 'MATCHSTATE:1:123:cr16943fc/cc/r17077r18184f:|4cQc|/Ts3c8s/Kc\r\nMATCHSTATE:0:124::3h4c||\r\nMATCHSTATE:0:124:c:3h4c||\r\n'
         #dataString = 'MATCHSTATE:1:0:r20000c///:5d5c|9hQd/8dAs8s/4h/6d\r\nMATCHSTATE:0:1::6sKs|\r\n'
         #dataString = 'MATCHSTATE:1:0:cfc/cc/cr2376f:|9hQd|/8s4h6d/5s\r\nMATCHSTATE:0:1::Ks6h||\r\n'
-        dataString ='MATCHSTATE:2:257:cr17261cf/r18594r19956r20000:||7h6s/4s6c3s\r\nMATCHSTATE:2:257:cr17261cf/r18594r19956r20000c//:2dAs|2c5c|7h6s/4s6c3s/Qc/5h\r\nMATCHSTATE:1:258::|7sQh|\r\nMATCHSTATE:1:258:f:|7sQh|\r\nMATCHSTATE:1:258:ff:|7sQh|\r\nMATCHSTATE:0:259::Kh4s||\r\nMATCHSTATE:0:259:c:Kh4s||\r\n'
-        previousHandNumber = 256
+        #dataString = 'MATCHSTATE:2:2:r20000cc///:Jh7c|Kd7d|Kh3h/8d2c9h/Ts/Kc\r\nMATCHSTATE:1:3::|JhKd|\r\nMATCHSTATE:1:3:r12384:|JhKd|\r\n'
+        #dataString ='MATCHSTATE:2:257:cr17261cf/r18594r19956r20000:||7h6s/4s6c3s\r\nMATCHSTATE:2:257:cr17261cf/r18594r19956r20000c//:2dAs|2c5c|7h6s/4s6c3s/Qc/5h\r\nMATCHSTATE:1:258::|7sQh|\r\nMATCHSTATE:1:258:f:|7sQh|\r\nMATCHSTATE:1:258:ff:|7sQh|\r\nMATCHSTATE:0:259::Kh4s||\r\nMATCHSTATE:0:259:c:Kh4s||\r\n'
+        dataString = 'MATCHSTATE:1:0:r12172r20000fc///:5d5c|9hQd|8dAs/8s4h6d/5s/Js\r\nMATCHSTATE:0:1::Ks6h||\r\n'
+        previousHandNumber = -1
 
     print('Received numBytes=', len(dataString), '\r\ndataString=', dataString)
     handString = handString + dataString
@@ -124,6 +131,7 @@ while (cont == True):
 
     handNumber = gameUtilities.getHandNumber(handString)
     print('handNumber =', handNumber, ' previousHandNumber=', previousHandNumber)
+    
         
     # If the hand has incremented then reset the variables that are used
     # to keep track of this hand
@@ -149,10 +157,11 @@ while (cont == True):
        
             mySeatNumber = gameUtilities.getSeatNumber(myPosition, previousHandNumber,
                                                        gameDefinition.numPlayers)
+        
             print('For the previous hand mySeatNumber=', mySeatNumber,
                   ' myPosition=', myPosition, 
                   ' previousHandNumber=', previousHandNumber,
-                  'numPlayers=', gameUtilities.GameDefinition.numPlayers)  
+                  'numPlayers=', gameDefinition.numPlayers)  
                                    
             # Save the historical values from this hand inside the player's
             # historical data
@@ -207,25 +216,31 @@ while (cont == True):
                 numTies = gameUtilities.findWinners(True, handEvaluator, 
                                                         gameDefinition.numPlayers, 
                                                         playerCards, boardCardsAsTreys, winner)
+            # Calculate the pot size
+            pot = gameUtilities.getPot(players)
+            print('pot=', pot)
+            
             # Now, divvy up the pot
             for seatNumber in range(0, len(winner)):
-                print('seatNumber ', seatNumber, ' wins ', winner[seatNumber]*100, ' percent of the pot')
+                playerCumulativeWinnings[seatNumber] = \
+                    players[seatNumber].stackSize - players[seatNumber].handStartingStackSize \
+                    + winner[seatNumber]*pot
+                    xxx you need to figure out how to handle the last hand.
+                
+                print('seatNumber ', seatNumber, ' wins ', winner[seatNumber]*100, 
+                      ' percent of the pot. Player has stackSize=', players[seatNumber].stackSize,
+                      ' and cumulative winnings of ', playerCumulativeWinnings[seatNumber])
         
             for seatNumberCounter in range (0, gameDefinition.numPlayers):
                 players[seatNumberCounter].addCurrentHandToHistoricalInfo()
                 historicalHandsFile.write('*******Data for player in seatNumber=' + str(seatNumberCounter) + ':\n')
                 historicalHandsFile.write(players[seatNumberCounter].currentHandAsString())
-
-                # Reset the player's stack.
-                # The computer poker competition plays by "Doyle's Rule", which is
-                # that the stacks are reset after every hand
-                players[seatNumberCounter].setStackSize(gameDefinition.startingStack[seatNumberCounter])
         
             handString = gameUtilities.lastAction(handString) + '\r\n'
 
     # Reset the values for this hand
     for seatNumberCounter in range (0, gameDefinition.numPlayers):
-        players[seatNumberCounter].resetCurrentState()
+        players[seatNumberCounter].resetCurrentState(handNumber, gameDefinition)
     
     # decode the message that you received
     lastActionState = gameUtilities.lastAction(handString)

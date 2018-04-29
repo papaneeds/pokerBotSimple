@@ -137,7 +137,7 @@ class PreFlopOddsBot(object):
                   ' Nobody raised before me and I was not planning on going all in. I get a free card. Returning=', bettingAction)                
         else:
             # Go all in
-            bettingAction = 'r' + str(players[mySeatNumber].stackSize)
+            bettingAction = 'r' + str(players[mySeatNumber].handStartingStackSize)
             print('Inside preFlopOddsBot. probability=', probability, 
                   ' threshold=', self.threshold, 
                   ' Going all in. Returning=', bettingAction)

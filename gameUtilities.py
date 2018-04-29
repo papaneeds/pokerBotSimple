@@ -21,9 +21,12 @@ class BettingAction(Enum):
 class Player(object):
 
     # The class "constructor" - It's actually an initializer 
-    def __init__(self, seatNumber, startingStackSize):
+    def __init__(self, seatNumber, gameDefinition, handNumber):
         self.seatNumber  = seatNumber # The seat number that this player sits in
-        self.stackSize = startingStackSize # The current stack size for this player
+        self.startingStackSize = gameDefinition.startingStack[seatNumber] # The starting stack for this player
+        self.handStartingStackSize = self.startingStackSize
+        self.stackSize = self.startingStackSize
+        self.blind = 0
    
         # These variables hold the historical values for each hand played
         # They are indexed by hand
@@ -32,17 +35,51 @@ class Player(object):
         self.historicalBet       = []               
         # These are the values during the current hand that the player
         # is participating in
-        self.holeCards = ""
-        self.bet = []  # The bets made during the hand, indexed by handRound
-        self.folded = False # Whether the player has folded
-        self.foldedHandRound = -1 # The handRound that they folded in.
+        self.handNumber = handNumber
+        self.resetCurrentState(self.handNumber, gameDefinition)
      
     # This function resets all the variables for the current hand
-    def resetCurrentState(self):
+    def resetCurrentState(self, handNumber, gameDefinition):
         self.holeCards = ""
         self.bet = []  # The bets made during the hand, indexed by handRound
         self.folded = False # Whether the player has folded
-        self.foldedHandRound = -1 # The handRound that they folded in.  
+        self.foldedHandRound = -1 # The handRound that they folded in. 
+        self.handNumber = handNumber
+        self.setStackForThisHand(handNumber, gameDefinition)
+        
+    # This function resets the stack for the current hand
+    def setStackForThisHand(self, handNumber, gameDefinition):
+        self.stackSize = self.handStartingStackSize
+        self.payBlindsAndAntes(handNumber, gameDefinition)
+        
+    # Pay the blinds for this hand
+    def payBlindsAndAntes(self, handNumber, gameDefinition):
+        # This is a new hand. See if you have to pay a blind or not
+        position = getPosition(self.seatNumber, handNumber, gameDefinition.numPlayers)
+        if (position == 0):
+            # Pay the small blind
+            self.stackSize -= gameDefinition.blinds[0]
+            self.blind = gameDefinition.blinds[0]
+        elif (position == 1):
+            # Pay the big blind
+            self.stackSize -= gameDefinition.blinds[1]
+            self.blind = gameDefinition.blinds[1]
+        else:
+            # Pay the ante
+            self.stackSize -= gameDefinition.blinds[2]
+        
+        # You can't have negative money!
+        if (self.stackSize < 0):
+            self.stackSize = 0
+            
+            
+        return
+    
+    # This function executes a bet
+    def doBet(self, betAmount):
+        # Decrease the player's stack by the bet amount.
+        self.stackSize = self.handStartingStackSize - betAmount
+        return
         
     # This function saves historical information
     def addCurrentHandToHistoricalInfo(self):       
@@ -70,13 +107,15 @@ class Player(object):
         outputString += 'foldedHandRound=' + str(self.foldedHandRound) + delimiter
         return outputString
         
+
+    
 # Define a gameDefinitionClass that will hold the game definition
 class GameDefinition(object):
-    gameType = "" 
-    numPlayers = 0
-    numRounds = 0 # The number of betting rounds per hand
-    startingStack = [] # The starting stack of each player
-    blinds = [] # The blinds, indexed from position=0
+#    gameType = "" 
+#    numPlayers = 0
+#    numRounds = 0 # The number of betting rounds per hand
+#    startingStack = [] # The starting stack of each player
+#    blinds = [] # The blinds, indexed from position=0
     
     # The first to act, indexed by handRound.
     #
@@ -102,6 +141,18 @@ class GameDefinition(object):
         self.blinds = blinds   
         self.firstToAct = firstToAct
     
+# A function that calculates the pot size.
+# The pot size is determined by how much each player has committed from his
+# stack this hand.
+# input: players: a list of Player objects, indexed by seatNumber
+# returns: the pot
+def getPot(players):
+    pot = 0
+    for player in (players):
+        pot += player.handStartingStackSize - player.stackSize
+        
+    return pot
+
 # This function takes apart a string like this:
 # AsTd6h
 # into its constituent cards (as strings)
@@ -178,6 +229,7 @@ def readGameDefinition(gameDefinitionFile):
         blinds=blindString[1].split()
         blinds[0]=int(blinds[0])
         blinds[1]=int(blinds[1])
+        blinds[2]=int(blinds[2])
         print('smallBlind=', blinds[0], 'bigBlind=', blinds[1])
         
         # This next section indicates which player acts first during the
@@ -367,7 +419,7 @@ def decode(actionState, gameDefinition, players, checkForPositionValidity):
             
     # Reset the values for this hand
     for seatNumberCounter in range (0, gameDefinition.numPlayers):
-        players[seatNumberCounter].resetCurrentState()
+        players[seatNumberCounter].resetCurrentState(handNumber, gameDefinition)
 
     # assign each player their hole cards 
     for position in range (0, numPlayers):
@@ -382,6 +434,7 @@ def decode(actionState, gameDefinition, players, checkForPositionValidity):
         #      ' seatNumber=', seatNumber, 
         #      ' players[', seatNumber, '].holeCards=', players[seatNumber].holeCards,
         #      ' stackSize=', players[seatNumber].stackSize)
+            
                    
     # Parse out any betting that has happened.
     # The betting strings that are expected by this regular
@@ -422,10 +475,12 @@ def decode(actionState, gameDefinition, players, checkForPositionValidity):
             #print('Someone has bet before me. matchObj=', matchObj)
                 
             #print('betsForThisHandRound=', betsForThisHandRound)
+
+            # keep track of whether anyone bet in this hand round
+            lastBet = 0
             
             # A variable to index the bets
-            betCounter = 0;
-
+            betCounter = 0;            
             while (betCounter < len(matchObj)) :
                 
                 actingPlayerSeat = getSeatNumber(actingPlayerPosition, handNumber, 
@@ -461,7 +516,13 @@ def decode(actionState, gameDefinition, players, checkForPositionValidity):
                     players[actingPlayerSeat].foldedHandRound = handRoundCounter
                 elif (bet[1] == 'r'):
                     # Decrease this player's stack size by the amount that they bet
-                    players[actingPlayerSeat].stackSize = gameDefinition.startingStack[actingPlayerSeat] - int(bet[2])
+                    players[actingPlayerSeat].doBet(int(bet[2]))
+                    lastBet = int(bet[2])
+                    #players[actingPlayerSeat].stackSize = gameDefinition.startingStack[actingPlayerSeat] - int(bet[2])
+                elif ((bet[1] == 'c') & (lastBet != 0)):
+                    # This player is calling behind a bet. 
+                    # Decrease this player's stack size by the lastBet
+                    players[actingPlayerSeat].doBet(lastBet)
                 
                 # Move the betCounter over by one and move the actingPlayerPosition over by one
                 betCounter = betCounter + 1
