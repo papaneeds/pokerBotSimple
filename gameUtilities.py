@@ -483,7 +483,12 @@ def decode(actionState, gameDefinition, players, checkForPositionValidity):
             #print('betsForThisHandRound=', betsForThisHandRound)
 
             # keep track of whether anyone bet in this hand round
-            lastBet = 0
+            if (handRoundCounter == 0):
+                # On the first round there is an implied bet of the big blind
+                lastBet = gameDefinition.blinds[1]
+            else:
+                # On subsequent rounds there is no blind.
+                lastBet = 0
             
             # A variable to index the bets
             betCounter = 0;            
@@ -517,6 +522,7 @@ def decode(actionState, gameDefinition, players, checkForPositionValidity):
                 #      ' bet=', bet) 
                 betsForThisHandRound[actingPlayerSeat].append(bet)
                 #print('betsForThisHandRound=', betsForThisHandRound)
+                    
                 if (bet[1] =='f'):
                     players[actingPlayerSeat].folded = True
                     players[actingPlayerSeat].foldedHandRound = handRoundCounter
