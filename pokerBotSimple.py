@@ -97,9 +97,23 @@ def handleHandChange(previousHandNumber, handNumber, gameDefinition, players,
             
                 for seatNumberCounter in range (0, gameDefinition.numPlayers): 
                     print('player ', seatNumberCounter, 
-                          ' cards=', players[seatNumberCounter].holeCards)
-                    [numCards, cardsAsList] = gameUtilities.cardStringToList(players[seatNumberCounter].holeCards)
-                    playerCards[seatNumberCounter] = gameUtilities.cardStringToTreysList(players[seatNumberCounter].holeCards)
+                          ' cards=', players[seatNumberCounter].holeCards,
+                          ' folded=', players[seatNumberCounter].folded,
+                          ' foldedHandRound=', players[seatNumberCounter].foldedHandRound)
+                    # If the player has folded then set their hole cards to blanks.
+                    # This will cause the gameUtilities.findWinners function to rank
+                    # this player's hand at the worst possible value (and they won't win
+                    # the hand)
+                    holeCards = ''
+                    if (players[seatNumberCounter].folded):
+                        print('player=', seatNumberCounter, ' folded. setting holeCards to nothing')
+                        holeCards = ''
+                    else:
+                        print('player=', seatNumberCounter, ' did not fold. setting holeCards to ', players[seatNumberCounter].holeCards)
+                        holeCards = players[seatNumberCounter].holeCards
+                        
+                    #[numCards, cardsAsList] = gameUtilities.cardStringToList(holeCards)                   
+                    playerCards[seatNumberCounter] = gameUtilities.cardStringToTreysList(holeCards)
                 
                 # Evaluate this hand
                 numTies = gameUtilities.findWinners(True, handEvaluator, 
@@ -125,6 +139,7 @@ def handleHandChange(previousHandNumber, handNumber, gameDefinition, players,
                 print('seatNumber ', seatNumber, ' wins ', winner[seatNumber]*100, 
                       ' percent of the pot. Player has stackSize=', players[seatNumber].stackSize,
                       ' and cumulative winnings of ', playerCumulativeWinnings[seatNumber])
+                print('seatNumber ', seatNumber, ' folded=', players[seatNumber].folded, ' in handRound=', players[seatNumber].foldedHandRound)
         
             for seatNumberCounter in range (0, gameDefinition.numPlayers):
                 players[seatNumberCounter].addCurrentHandToHistoricalInfo()
