@@ -56,23 +56,12 @@ class Player(object):
     # Pay the blinds for this hand
     def payBlindsAndAntes(self, handNumber, gameDefinition):
         self.position = getPosition(self.seatNumber, handNumber, gameDefinition.numPlayers)
-        if (self.position == 0):
-            # Pay the small blind
-            self.stackSize -= gameDefinition.blinds[0]
-            self.blind = gameDefinition.blinds[0]
-        elif (self.position == 1):
-            # Pay the big blind
-            self.stackSize -= gameDefinition.blinds[1]
-            self.blind = gameDefinition.blinds[1]
-        else:
-            # Pay the ante
-            self.stackSize -= gameDefinition.blinds[2]
-            self.blind = gameDefinition.blinds[2]
-        
+        self.blind = gameDefinition.blinds[self.position]
+        self.stackSize -= self.blind
+
         # You can't have negative money!
         if (self.stackSize < 0):
-            self.stackSize = 0
-            
+            self.stackSize = 0           
             
         return
     
@@ -232,11 +221,10 @@ def readGameDefinition(gameDefinitionFile):
         print('startingsStack=', startingStack)
         
         blindString=content[5].split('=')
-        blinds=blindString[1].split()
-        blinds[0]=int(blinds[0])
-        blinds[1]=int(blinds[1])
-        blinds[2]=int(blinds[2])
-        print('smallBlind=', blinds[0], 'bigBlind=', blinds[1])
+        tempBlinds=blindString[1].split()
+        blinds = [0] * numPlayers       
+        for i in range(0, numPlayers):
+            blinds[i]=int(tempBlinds[i])
         
         # This next section indicates which player acts first during the
         # various stages of play (pre-flop, flop, turn, river)
@@ -252,6 +240,9 @@ def readGameDefinition(gameDefinitionFile):
         for i in range (0, len(firstToActString)):
             firstToAct.insert(i,int(firstToActString[i])-1)
             print('firstToAct[', i, ']=', firstToAct[i])
+            
+        print('player in position 0 pays blind=', blinds[0], 
+              ' and player in position 1 pays blind=', blinds[1])
         
         return GameDefinition(gameType, numPlayers, numRounds, startingStack, blinds, firstToAct)
         
@@ -484,8 +475,11 @@ def decode(actionState, gameDefinition, players, checkForPositionValidity):
 
             # keep track of whether anyone bet in this hand round
             if (handRoundCounter == 0):
-                # On the first round there is an implied bet of the big blind
-                lastBet = gameDefinition.blinds[1]
+                # On the first round there is an implied bet of the big blind.
+                # Note that for a reverse blinds game the big blind is in position
+                # 0, not position 1. So, we find the max of all the blinds and set
+                # the lastBet to be that.
+                lastBet = max(gameDefinition.blinds[0], gameDefinition.blinds[1])
             else:
                 # On subsequent rounds there is no blind.
                 lastBet = 0

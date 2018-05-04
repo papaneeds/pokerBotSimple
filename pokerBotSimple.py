@@ -265,7 +265,8 @@ while (cont == True):
         #dataString = 'MATCHSTATE:1:0:cfc/cc/cr2376f:|9hQd|/8s4h6d/5s\r\nMATCHSTATE:0:1::Ks6h||\r\n'
         #dataString = 'MATCHSTATE:2:2:r20000cc///:Jh7c|Kd7d|Kh3h/8d2c9h/Ts/Kc\r\nMATCHSTATE:1:3::|JhKd|\r\nMATCHSTATE:1:3:r12384:|JhKd|\r\n'
         #dataString ='MATCHSTATE:2:257:cr17261cf/r18594r19956r20000:||7h6s/4s6c3s\r\nMATCHSTATE:2:257:cr17261cf/r18594r19956r20000c//:2dAs|2c5c|7h6s/4s6c3s/Qc/5h\r\nMATCHSTATE:1:258::|7sQh|\r\nMATCHSTATE:1:258:f:|7sQh|\r\nMATCHSTATE:1:258:ff:|7sQh|\r\nMATCHSTATE:0:259::Kh4s||\r\nMATCHSTATE:0:259:c:Kh4s||\r\n'
-        dataString = 'MATCHSTATE:1:0:r12172r20000fc///:5d5c|9hQd|8dAs/8s4h6d/5s/Js\r\nMATCHSTATE:0:1::Ks6h||\r\n'
+        #dataString = 'MATCHSTATE:1:0:r12172r20000fc///:5d5c|9hQd|8dAs/8s4h6d/5s/Js\r\nMATCHSTATE:0:1::Ks6h||\r\n'
+        dataString = 'MATCHSTATE:1:2:cr19472f:|2h4c\r\nMATCHSTATE:0:3:c:KcQd||\r\n'
         previousHandNumber = -1
 
     print('Length of dataString numBytes=', len(dataString), '\r\ndataString=', dataString)
