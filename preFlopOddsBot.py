@@ -26,7 +26,7 @@ class PreFlopOddsBot(object):
         self.oddsMatrix = simpleOdds.getOddsMatrix(numPlayers, handRound, dataDirectory)
         self.allIn = False
 
-    def getBettingAction(self, handNumber, handRound, myPosition, firstToActPosition, numPlayers, players):
+    def getBettingAction(self, handNumber, handRound, myPosition, firstToActPosition, numPlayers, players, blinds):
         bettingAction = 'c' # Default betting action
         allIn = False
         
@@ -113,9 +113,30 @@ class PreFlopOddsBot(object):
 #                 ' numBettingRoundsForThisPlayer=', numBettingRoundsForThisPlayer,
 #                 ' (bettingRound == numBettingRoundsForThisPlayer)=', 
 #                  (bettingRound == numBettingRoundsForThisPlayer))
-                        
+            
+        # Unless this is pre-flop and
+        # you are the big blind and 
+        # you were not going all in and
+        # everyone else has just called then
+        # fold
+        if ((handRound == 0) & 
+        (players[mySeatNumber].blind == max(blinds)) & 
+        (allIn == False) & 
+        (not someoneRaised)):
+            bettingAction = 'c'
+            print('Inside preFlopOddsBot. probability=', probability, 
+                  ' threshold=', self.threshold, 
+                  ' This is pre-flop, I am the big blind, I was not planning on going all in and no one has raised. I get a free card. Returning=', bettingAction)                        
+        # If this is post-flop and no one raised before you then just call
+        # (even if you were not planning on going all in). You basically
+        # get free cards
+        elif ((handRound != 0) & (not someoneRaised) & (not allIn)):
+            bettingAction = 'c'
+            print('Inside preFlopOddsBot. probability=', probability, 
+                  ' threshold=', self.threshold, 
+                  ' This is post flop, nobody raised before me and I was not planning on going all in. I get another free card. Returning=', bettingAction)
         #If anyone before you bet and you were not going all in then fold
-        if (someoneRaised & (allIn == False)):
+        elif (someoneRaised & (allIn == False)):
             bettingAction = 'f'
             print('Inside preFlopOddsBot. probability=', probability, 
                   ' threshold=', self.threshold, 
@@ -126,15 +147,7 @@ class PreFlopOddsBot(object):
             bettingAction = 'c'
             print('Inside preFlopOddsBot. probability=', probability, 
                   ' threshold=', self.threshold, 
-                  ' Someone went all in before me and I was planning on going all in. Returning=', bettingAction)
-        # If no one raised before you then just call
-        # (even if you were not planning on going all in). You basically
-        # get free cards
-        elif ((not someoneRaised) & (not allIn)):
-            bettingAction = 'c'
-            print('Inside preFlopOddsBot. probability=', probability, 
-                  ' threshold=', self.threshold, 
-                  ' Nobody raised before me and I was not planning on going all in. I get a free card. Returning=', bettingAction)                
+                  ' Someone went all in before me and I was planning on going all in. Returning=', bettingAction)                
         else:
             # Go all in
             bettingAction = 'r' + str(players[mySeatNumber].handStartingStackSize)

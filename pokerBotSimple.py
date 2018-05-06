@@ -320,7 +320,8 @@ while (cont == True):
                                              myPosition, 
                                              gameDefinition.firstToAct[handRound],
                                              gameDefinition.numPlayers,
-                                             players)
+                                             players,
+                                             gameDefinition.blinds)
         print('Finished calling pokerBot.')
     
         print('Pokerbot has decided to do: player[', myPosition, ']. actionState=', actionState,
