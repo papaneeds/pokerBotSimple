@@ -1,5 +1,6 @@
 import treys
 import partialDeck
+import gameUtilities
 
 # This function calculates the pre-flop odds of p1_hand having the 
 # currently winning hand in a numPlayerss table after numBoardCards are dealt.
@@ -34,8 +35,8 @@ def getOdds(p1_hand, # The hole cards
             print("Board cards=")
             treys.Card.print_pretty_cards(boardCards)
             
-        numTies = findWinners(debug,
-                              evaluator, numPlayers, hands, boardCards, winner)
+        numTies = gameUtilities.findWinners(debug,
+                                            evaluator, numPlayers, hands, boardCards, winner)
 
     for i in range(0, numPlayers):
         winner[i] /= numIterations
