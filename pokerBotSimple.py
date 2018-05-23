@@ -159,18 +159,28 @@ socketComms = True
 print ('Number of arguments:', len(sys.argv), 'arguments.')
 print ('Argument List:', str(sys.argv))
 
-if (len(sys.argv) != 4) :
+if (len(sys.argv) != 5) :
     print('Error. invalid arguments')
-    print('Usage: pokerBotSimple.py gameFile IP port')
+    print('Usage: pokerBotSimple.py gameFile IP port <botType>')
+    print('   where <botType> is one of preFlopOddsBot|expectedValueBot')
     sys.exit(1)
 
-print ('The game definition file is ', sys.argv[1])
-print ('The IP address to connect to is ', sys.argv[2])
-print ('The port to connect to is ', sys.argv[3])
+gameDefinitionFilename = sys.argv[1]
+HOST = sys.argv[2]   
+PORT = int(sys.argv[3]) 
+botType = sys.argv[4]
+
+if (not ((botType == 'preFlopOddsBot') | (botType == 'expectedValueBot'))):
+    print('Error: you entered <botType>=', botType )
+    print('  Allowed values of <botType> is one of reFlopOddsBot|expectedValueBot')
+
+print ('The game definition file is ', gameDefinitionFilename)
+print ('The IP address to connect to is ', HOST)
+print ('The port to connect to is ', PORT)
+print ('The botType is ', botType)
 
 # read in the game definition file
 serverDirectory        = '/home/tompokerlinux/Documents/project_acpc_server/'
-gameDefinitionFilename = sys.argv[1]
 gameDefinition         = gameUtilities.readGameDefinition(serverDirectory + gameDefinitionFilename)
 
 # open a file to save the historical hands to
@@ -189,9 +199,16 @@ threshold = (1.1/gameDefinition.numPlayers) # fold all hands than a random chanc
 #cwd = os.getcwd()
 dir_path = os.path.dirname(os.path.realpath(__file__))
 dataDirectory = dir_path + '/data/' # This is where the pre-computed probability files are
-bot = preFlopOddsBot.PreFlopOddsBot(gameDefinition.numPlayers, 
-                                    threshold, 
-                                    dataDirectory)
+
+if (botType == 'preFlopOddsBot'):
+    bot = preFlopOddsBot.PreFlopOddsBot(gameDefinition.numPlayers, 
+                                        threshold, 
+                                        dataDirectory)
+elif (botType == 'expectedValueBot'):
+    bot = expectedValueBot.ExpectedValueBot(gameDefinition.numPlayers, 
+                                             threshold, 
+                                             dataDirectory)
+        
 # create the players for the game
 players = list()
 for i in range (0, gameDefinition.numPlayers):
@@ -214,8 +231,6 @@ playerCumulativeWinnings = [0] * gameDefinition.numPlayers
 handEvaluator = treys.Evaluator()
 
 # start communicating with the dealer
-HOST = sys.argv[2]   
-PORT = int(sys.argv[3]) 
 if (socketComms):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((HOST, PORT))
@@ -315,13 +330,20 @@ while (cont == True):
             print('Player[', seatNumberCounter, ']=', players[seatNumberCounter].currentHandAsString())
             
         print('About to call pokerBot.')
-        bettingAction = bot.getBettingAction(handNumber,
+        if (botType == 'preFlopOddsBot'):
+            print('Calling preFlopOddsBot')
+            bettingAction = bot.getBettingAction(handNumber,
                                              handRound, 
                                              myPosition, 
                                              gameDefinition.firstToAct[handRound],
                                              gameDefinition.numPlayers,
                                              players,
                                              gameDefinition.blinds)
+        elif (botType == 'expectedValueBot'):
+            print('Calling expectedValueBot')
+            xxx write your bot here. Calculate the pot odds and your expected
+            hand strength and then bet appropriately
+     
         print('Finished calling pokerBot.')
     
         print('Pokerbot has decided to do: player[', myPosition, ']. actionState=', actionState,

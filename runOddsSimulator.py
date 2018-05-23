@@ -11,7 +11,7 @@ import numpy as np
 import graphicalAnalysis as ga
 
 # Main program
-debug = True
+debug = False
 
 # Create all possible pairs of hands
 numIterations = 1000

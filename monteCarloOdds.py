@@ -57,6 +57,13 @@ def getpreFlopOdds(p1_hand, # The hole cards
 # numBoardCardsToCome more cards to come.
 # The odds are calcualted by drawing numIterations hands.
 # 
+# An example of how you would use this function is:
+# myHand=[treys.Card.new('7c'), treys.Card.new('2d')]
+# existingBoardCards=[treys.Card.new('4c'), treys.Card.new('Ks'), treys.Card.new('Th')]
+# numIterations = 1000
+# numBoardCardsToCome = 2
+# maxNumPlayers = 10
+#
 def getExpectedHandStrengthOdds(p1_hand, # The hole cards
                                 numIterations, # The number of iterations to run the simulation for
                                 numPlayers, # The number of players in the hand
@@ -64,7 +71,7 @@ def getExpectedHandStrengthOdds(p1_hand, # The hole cards
                                 existingBoardCards # The existing board cards
                                 ):
 
-    debug = True
+    debug = False
 
     # pretend you are playing with n random players 
     # for numIterations hands with numBoardCardsToCome and existingBoardCards board cards
