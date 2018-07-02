@@ -17,14 +17,21 @@ Otherwise, it will fold to any bet on any round.
 import simpleOdds
 import gameUtilities
 
-class PreFlopOddsBot(object):
+class PreFlopOddsBot(gameUtilities.PokerBot):
     # The class "constructor" - It's actually an initializer 
     def __init__(self, numPlayers, threshold, dataDirectory):
-        self.numPlayers  = numPlayers 
-        self.threshold = threshold
+        super().__init__(numPlayers, threshold, dataDirectory)
+        self.name = 'PreFlopOddsBot'
+        # The following variables are set in the superclass constructor
+        #self.numPlayers  = numPlayers 
+        #self.threshold = threshold
+        #self.allIn = False
+        
+        # The odds matrix for the pre-flop odds bot never changes. It is
+        # always the pre-flop odds matrix. So, retrieve it once at the
+        # start of time and then just leave it.
         handRound = 0 # it's pre-flop
         self.oddsMatrix = simpleOdds.getOddsMatrix(numPlayers, handRound, dataDirectory)
-        self.allIn = False
 
     def getBettingAction(self, handNumber, handRound, myPosition, firstToActPosition, numPlayers, players, blinds):
         bettingAction = 'c' # Default betting action

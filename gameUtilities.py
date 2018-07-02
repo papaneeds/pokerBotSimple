@@ -102,7 +102,19 @@ class Player(object):
         outputString += 'stackSize=' + str(self.stackSize) + delimiter
         return outputString
         
+class PokerBot(object):
+    # The class "constructor" - It's actually an initializer 
+    def __init__(self, numPlayers, threshold, dataDirectory):
+        self.numPlayers  = numPlayers 
+        self.threshold = threshold
+        self.dataDirectory = dataDirectory
+        self.allIn = False
+        self.oddsMatrix = None
+        self.name = None
 
+    def getBettingAction(self, handNumber, handRound, myPosition, firstToActPosition, numPlayers, players, blinds):
+        raise NotImplementedError('Subclass must implement the abstract getBettingAction method')
+    
     
 # Define a gameDefinitionClass that will hold the game definition
 class GameDefinition(object):

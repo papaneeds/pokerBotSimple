@@ -8,6 +8,7 @@ Created on Sun Jan 14 10:14:14 2018
 
 import gameUtilities 
 import preFlopOddsBot
+import expectedValueBot
 import os  
 import socket
 import sys
@@ -154,7 +155,7 @@ def handleHandChange(previousHandNumber, handNumber, gameDefinition, players,
 # main program starts here
 
 # Turning socketComms = False allows you to define input strings for debugging
-socketComms = True
+socketComms = False
 
 print ('Number of arguments:', len(sys.argv), 'arguments.')
 print ('Argument List:', str(sys.argv))
@@ -208,6 +209,8 @@ elif (botType == 'expectedValueBot'):
     bot = expectedValueBot.ExpectedValueBot(gameDefinition.numPlayers, 
                                              threshold, 
                                              dataDirectory)
+    
+print ('Finished creating bot=', bot.name)
         
 # create the players for the game
 players = list()
@@ -330,19 +333,13 @@ while (cont == True):
             print('Player[', seatNumberCounter, ']=', players[seatNumberCounter].currentHandAsString())
             
         print('About to call pokerBot.')
-        if (botType == 'preFlopOddsBot'):
-            print('Calling preFlopOddsBot')
-            bettingAction = bot.getBettingAction(handNumber,
+        bettingAction = bot.getBettingAction(handNumber,
                                              handRound, 
                                              myPosition, 
                                              gameDefinition.firstToAct[handRound],
                                              gameDefinition.numPlayers,
                                              players,
                                              gameDefinition.blinds)
-        elif (botType == 'expectedValueBot'):
-            print('Calling expectedValueBot')
-            xxx write your bot here. Calculate the pot odds and your expected
-            hand strength and then bet appropriately
      
         print('Finished calling pokerBot.')
     
